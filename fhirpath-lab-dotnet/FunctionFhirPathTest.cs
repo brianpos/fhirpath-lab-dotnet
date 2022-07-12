@@ -41,6 +41,7 @@ namespace FhirPathLab_DotNetEngine
             Parameters operationParameters = new Parameters();
             if (req.Method != "POST")
             {
+                // read the parameters from the request query string
                 foreach (var item in req.TupledParameters())
                 {
                     operationParameters.Add(item.Key, new FhirString(item.Value));
@@ -48,6 +49,7 @@ namespace FhirPathLab_DotNetEngine
             }
             else
             {
+                // read the FHIR parameters resource from the request body
                 using (var stream = SerializationUtil.JsonReaderFromStream(req.Body))
                 {
                     operationParameters = await _jsParser.ParseAsync<Parameters>(stream);
