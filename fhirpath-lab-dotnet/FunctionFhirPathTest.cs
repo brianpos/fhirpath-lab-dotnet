@@ -87,14 +87,14 @@ namespace FhirPathLab_DotNetEngine
                 }
             }
 
-            var result = EvaluateFhirPathTesterExpression(resourceId, resource, operationParameters.GetString("context"), operationParameters.GetString("expression"), terminologyServerUrl, operationParameters.Parameter.FirstOrDefault(p => p.Name == "variables"));
+            var resultResource = EvaluateFhirPathTesterExpression(resourceId, resource, operationParameters.GetString("context"), operationParameters.GetString("expression"), terminologyServerUrl, operationParameters.Parameter.FirstOrDefault(p => p.Name == "variables"));
             // result.Id = null;
-            result.ResourceBase = new Uri("https://test.org/api");
+            resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
-            var ar = new FhirObjectResult(HttpStatusCode.OK, result, result);
-            ar.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
-            ar.Formatters.Add(new JsonFhirOutputFormatter(ArrayPool<char>.Shared));
-            return ar;
+            var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
+            result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
+            result.Formatters.Add(new JsonFhirOutputFormatter(ArrayPool<char>.Shared));
+            return result;
         }
 
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
