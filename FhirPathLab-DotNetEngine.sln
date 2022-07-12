@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32611.2
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FhirPathLab-DotNetEngine", "fhirpath-lab-dotnet\FhirPathLab-DotNetEngine.csproj", "{07A22100-CB9A-492C-B685-B2D705D6556A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1F55D82C-BF92-470C-847B-0216B90BD113}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE.txt = LICENSE.txt
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{07A22100-CB9A-492C-B685-B2D705D6556A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07A22100-CB9A-492C-B685-B2D705D6556A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07A22100-CB9A-492C-B685-B2D705D6556A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07A22100-CB9A-492C-B685-B2D705D6556A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C55691AD-F09B-4A80-B828-F4AECB85DBAF}
+	EndGlobalSection
+EndGlobal
