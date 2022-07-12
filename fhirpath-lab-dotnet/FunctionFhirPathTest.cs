@@ -38,11 +38,13 @@ namespace FhirPathLab_DotNetEngine
         {
             log.LogInformation("FhirPath Expression dotnet Evaluation");
 
-            Parameters operationParameters;
+            Parameters operationParameters = new Parameters();
             if (req.Method != "POST")
             {
-                operationParameters = new Parameters();
-                ExtractParametersFromUrl(ref operationParameters, req.TupledParameters(OperationQueryParameterNames), req);
+                foreach (var item in req.TupledParameters())
+                {
+                    operationParameters.Add(item.Key, new FhirString(item.Value));
+            }
             }
             else
             {
@@ -91,17 +93,6 @@ namespace FhirPathLab_DotNetEngine
             ar.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
             ar.Formatters.Add(new JsonFhirOutputFormatter(ArrayPool<char>.Shared));
             return ar;
-        }
-
-        static readonly string[] OperationQueryParameterNames = { "_summary", "_format" };
-        private static void ExtractParametersFromUrl(ref Parameters operationParameters, IEnumerable<KeyValuePair<string, string>> enumerable, HttpRequest Request)
-        {
-            if (operationParameters == null)
-                operationParameters = new Parameters();
-            foreach (var item in Request.TupledParameters())
-            {
-                operationParameters.Add(item.Key, new FhirString(item.Value));
-            }
         }
 
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
