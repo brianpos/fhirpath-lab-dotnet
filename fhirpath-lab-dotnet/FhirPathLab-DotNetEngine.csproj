@@ -5,7 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.0.1" />
-    <PackageReference Include="brianpos.Fhir.R4.Custom.Serializers" Version="3.8.3-beta1" />
     <PackageReference Include="brianpos.Fhir.R4.WebApi.AspNetCore" Version="3.8.3-beta1" />
     <PackageReference Include="brianpos.Fhir.R4.WebApi.Support" Version="3.8.3-beta2" />
     <PackageReference Include="Hl7.Fhir.Specification.R4" Version="3.8.3" />
