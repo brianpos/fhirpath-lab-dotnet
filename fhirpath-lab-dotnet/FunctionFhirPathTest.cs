@@ -31,6 +31,40 @@ namespace FhirPathLab_DotNetEngine
     public static class FunctionFhirPathTest
 
     {
+        [FunctionName("FHIRPathTester-CapabilityStatement")]
+        public static async Task<IActionResult> RunCapabilityStatement(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "metadata")] HttpRequest req,
+            ILogger log)
+        {
+            log.LogInformation("CapabilityStatement");
+
+            var resultResource = new CapabilityStatement
+            {
+                Title = "FHIRPath Lab DotNet expression evaluator",
+                Status = PublicationStatus.Active,
+                Date = "2022-07-12",
+                Kind = CapabilityStatementKind.Instance,
+                FhirVersion = FHIRVersion.N4_0_1,
+                Format = new[] { "application/fhir+json" }
+            };
+            resultResource.Rest.Add(new CapabilityStatement.RestComponent()
+            {
+                Mode = CapabilityStatement.RestfulCapabilityMode.Server,
+                Security = new CapabilityStatement.SecurityComponent { Cors = true }
+            });
+            resultResource.Rest[0].Operation.Add(new CapabilityStatement.OperationComponent()
+            {
+                Name = "fhirpath",
+                Definition = "http://fhirpath-lab.org/OperationDefinition/fhirpath"
+            });
+            resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
+
+            var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
+            result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
+            result.Formatters.Add(new JsonFhirOutputFormatter(ArrayPool<char>.Shared));
+            return result;
+        }
+
         [FunctionName("FHIRPathTester")]
         public static async Task<IActionResult> RunFhirPathTest(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath")] HttpRequest req,
