@@ -122,7 +122,6 @@ namespace FhirPathLab_DotNetEngine
             }
 
             var resultResource = EvaluateFhirPathTesterExpression(resourceId, resource, operationParameters.GetString("context"), operationParameters.GetString("expression"), terminologyServerUrl, operationParameters.Parameter.FirstOrDefault(p => p.Name == "variables"));
-            // result.Id = null;
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
