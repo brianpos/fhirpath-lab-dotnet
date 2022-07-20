@@ -137,6 +137,7 @@ namespace FhirPathLab_DotNetEngine
             var result = new Parameters() { Id = "fhirpath" };
             var configParameters = new Parameters.ParameterComponent() { Name = "parameters" };
             result.Parameter.Add(configParameters);
+            configParameters.Part.Add(new Parameters.ParameterComponent() { Name = "evaluator", Value = new FhirString("Firely-3.8.3") });
             if (!string.IsNullOrEmpty(context))
                 configParameters.Part.Add(new Parameters.ParameterComponent() { Name = "context", Value = new FhirString(context) });
             configParameters.Part.Add(new Parameters.ParameterComponent() { Name = "expression", Value = new FhirString(expression) });
