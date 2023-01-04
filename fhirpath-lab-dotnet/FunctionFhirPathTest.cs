@@ -228,7 +228,7 @@ namespace FhirPathLab_DotNetEngine
             List<KeyValuePair<string, IEnumerable<ITypedElement>>> traceList = new List<KeyValuePair<string, IEnumerable<ITypedElement>>>();
             evalContext.Tracer = (name, values) =>
             {
-                traceList.Add(new KeyValuePair<string, IEnumerable<ITypedElement>>(name, values));
+                traceList.Add(new KeyValuePair<string, IEnumerable<ITypedElement>>(name, values.ToList()));
             };
 
             Dictionary<string, ITypedElement> resolvedItems = new Dictionary<string, ITypedElement>();
@@ -480,5 +480,13 @@ namespace FhirPathLab_DotNetEngine
             AllowUnrecognizedEnums = true,
             PermissiveParsing = true
         });
+
+        // To keep the Azure function "warm" trigger it every 15 minutes
+        // https://mikhail.io/serverless/coldstarts/azure/
+        [FunctionName("Warmer")]
+        public static void WarmUp([TimerTrigger("0 */15 * * * *")] TimerInfo timer)
+        {
+            // Do nothing
+        }
     }
 }
