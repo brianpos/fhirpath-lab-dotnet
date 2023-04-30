@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Engine.R4B\FirelyFihirpathEngineTester.cs" Link="FirelyFihirpathEngineTester.cs" />
+    <Compile Include="..\Engine.R4B\Helpers\CanonicalUrl.cs" Link="Helpers\CanonicalUrl.cs" />
+    <Compile Include="..\Engine.R4B\Helpers\FhirPathTerminologies.cs" Link="Helpers\FhirPathTerminologies.cs" />
+    <Compile Include="..\Engine.R4B\Helpers\SymbolTableExtensions.cs" Link="Helpers\SymbolTableExtensions.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hl7.Fhir.Specification.R5" Version="5.1.0" />
+    <PackageReference Include="brianpos.Fhir.R5.WebApi.AspNetCore" Version="5.1.0-beta1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Helpers\" />
+  </ItemGroup>
+</Project>

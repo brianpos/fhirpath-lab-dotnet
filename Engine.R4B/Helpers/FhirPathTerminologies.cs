@@ -1,9 +1,9 @@
 using Hl7.Fhir.ElementModel;
-using Hl7.Fhir.Model;
-using Hl7.Fhir.Rest;
 using Hl7.Fhir.Specification;
 using System.Collections.Generic;
 using System;
+using Hl7.Fhir.Rest;
+using Hl7.Fhir.Model;
 
 namespace FhirPathLab_DotNetEngine
 {
@@ -32,7 +32,7 @@ namespace FhirPathLab_DotNetEngine
         // expand(valueSet, params) : ValueSet
         public ValueSet Expand(string vsUrl, string parameters)
         {
-            FhirClient fc = new FhirClient(TerminologyServerUrl, new FhirClientSettings() { VerifyFhirVersion = false });
+            var fc = new FhirClient(TerminologyServerUrl, new FhirClientSettings() { VerifyFhirVersion = false });
             var nvp = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(parameters);
             var canUrl = new CanonicalUrl(vsUrl);
             var expParams = new Parameters();
@@ -146,13 +146,13 @@ namespace FhirPathLab_DotNetEngine
             {
                 var result = Lookup(coding, parameters);
                 if (result != null)
-                    return TypedSerialization.ToTypedElement(result);
+                    return result.ToTypedElement(FirelyFhirpathEngineTester._inspector);
             }
             if (code != null)
             {
                 var result = Lookup(code, parameters);
                 if (result != null)
-                    return TypedSerialization.ToTypedElement(result);
+                    return result.ToTypedElement(FirelyFhirpathEngineTester._inspector);
             }
             return null;
         }
