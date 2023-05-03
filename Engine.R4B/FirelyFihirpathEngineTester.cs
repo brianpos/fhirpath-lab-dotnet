@@ -393,7 +393,12 @@ namespace FhirPathLab_DotNetEngine
                                 partContext.Part.Add(resultPart);
 
                                 if (item is DataType dt)
-                                    resultPart.Value = dt;
+                                {
+                                    if (dt is FhirString str && str.Value == "")
+                                        resultPart.Name = "empty-string";
+                                    else
+                                        resultPart.Value = dt;
+                                }
                                 else if (item is Resource fr)
                                     resultPart.Resource = fr;
                                 else if (item != null)
@@ -421,15 +426,20 @@ namespace FhirPathLab_DotNetEngine
 
                                 foreach (var val in ti.Value.ToFhirValues())
                                 {
+                                    var part = new Parameters.ParameterComponent() { Name = val.TypeName };
+                                    traceParam.Part.Add(part);
                                     if (val is DataType dt)
-                                        traceParam.Part.Add(new Parameters.ParameterComponent() { Name = dt.TypeName, Value = dt });
+                                    {
+                                        if (val is FhirString str && str.Value == "")
+                                            part.Name = "empty-string";
+                                        else
+                                            part.Value = dt;
+                                    }
                                     else if (val is Resource fr)
-                                        traceParam.Part.Add(new Parameters.ParameterComponent() { Name = fr.TypeName, Resource = fr });
+                                        part.Resource = fr;
                                     else
                                     {
-                                        var jsonPart = new Parameters.ParameterComponent() { Name = val.TypeName };
-                                        traceParam.Part.Add(jsonPart);
-                                        jsonPart.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
+                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
                                     }
                                 }
                             }
