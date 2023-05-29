@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Hl7.Fhir.Specification.R4B" Version="5.1.0" />
-    <PackageReference Include="brianpos.Fhir.R4B.WebApi.AspNetCore" Version="5.1.0-beta1" />
+    <PackageReference Include="Hl7.Fhir.Specification.R4B" Version="5.2.0" />
+    <PackageReference Include="brianpos.Fhir.R4B.WebApi.AspNetCore" Version="5.2.0-beta1" />
   </ItemGroup>
 </Project>

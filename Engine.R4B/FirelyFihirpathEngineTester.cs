@@ -18,7 +18,7 @@ using Hl7.Fhir.Specification.Source;
 using System.Text;
 using Hl7.Fhir.Introspection;
 using Hl7.Fhir.WebApi;
-using Hl7.Fhir.NetCoreApi.R4;
+using Hl7.Fhir.NetCoreApi;
 
 namespace FhirPathLab_DotNetEngine
 {

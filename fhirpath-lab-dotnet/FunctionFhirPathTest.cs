@@ -32,7 +32,7 @@ namespace FhirPathLab_DotNetEngine
             resultResource.FhirVersion = FHIRVersion.N4_0_1;
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
-            var result = new r4b::Hl7.Fhir.NetCoreApi.R4.FhirObjectResult(HttpStatusCode.OK, resultResource);
+            var result = new r4b::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
             result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
             result.Formatters.Add(new r4b::Hl7.Fhir.WebApi.JsonFhirOutputFormatter2());
             return result;
@@ -45,10 +45,10 @@ namespace FhirPathLab_DotNetEngine
         {
             log.LogInformation("FhirPath Expression dotnet Evaluation");
 
-            var resultResource = await r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.1.0 (R4B)");
+            var resultResource = await r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.2.0 (R4B)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
-            var result = new r4b::Hl7.Fhir.NetCoreApi.R4.FhirObjectResult(HttpStatusCode.OK, resultResource);
+            var result = new r4b::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
             result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
             result.Formatters.Add(new r4b::Hl7.Fhir.WebApi.JsonFhirOutputFormatter2());
             return result;
@@ -61,10 +61,10 @@ namespace FhirPathLab_DotNetEngine
         {
             log.LogInformation("FhirPath Expression dotnet Evaluation");
 
-            var resultResource = await r5.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.1.0 (R5)");
+            var resultResource = await r5.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.2.0 (R5)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
-            var result = new r5::Hl7.Fhir.NetCoreApi.R4.FhirObjectResult(HttpStatusCode.OK, resultResource);
+            var result = new r5::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
             result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
             result.Formatters.Add(new r5::Hl7.Fhir.WebApi.JsonFhirOutputFormatter2());
             return result;
