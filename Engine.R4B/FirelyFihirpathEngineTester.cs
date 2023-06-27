@@ -18,7 +18,10 @@ using Hl7.Fhir.Specification.Source;
 using System.Text;
 using Hl7.Fhir.Introspection;
 using Hl7.Fhir.WebApi;
-using Hl7.Fhir.NetCoreApi;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using System.Collections;
+using System.Reflection;
 
 namespace FhirPathLab_DotNetEngine
 {
@@ -77,6 +80,7 @@ namespace FhirPathLab_DotNetEngine
 
             Resource resource = operationParameters.GetResource("resource");
             string resourceId = operationParameters.GetString("resource");
+            bool bValidateExpression = operationParameters.GetSingleValue<FhirBoolean>("validate")?.Value ?? false;
             string terminologyServerUrl = operationParameters.GetString("terminologyserver");
             if (resource == null && !string.IsNullOrEmpty(resourceId))
             {
@@ -104,14 +108,20 @@ namespace FhirPathLab_DotNetEngine
                 }
             }
 
-            var resultResource = EvaluateFhirPathTesterExpression(resourceId, resource, operationParameters.GetString("context"), operationParameters.GetString("expression"), terminologyServerUrl, operationParameters.Parameter.FirstOrDefault(p => p.Name == "variables"), firelyVersion);
+            var resultResource = EvaluateFhirPathTesterExpression(resourceId, resource, operationParameters.GetString("context"), operationParameters.GetString("expression"), terminologyServerUrl, operationParameters.Parameter.FirstOrDefault(p => p.Name == "variables"), firelyVersion, bValidateExpression);
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
             return resultResource;
         }
 
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
-        public static Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion)
+        public static Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression)
         {
+            var visitorContext = new JsonExpressionTreeVisitor(_inspector,
+                ModelInfo.SupportedResources, ModelInfo.OpenTypes);
+
+            var validator = new JsonExpressionTreeVisitor(_inspector,
+                ModelInfo.SupportedResources, ModelInfo.OpenTypes);
+
             Hl7.Fhir.FhirPath.ElementNavFhirExtensions.PrepareFhirSymbolTableFunctions();
             var result = new Parameters() { Id = "fhirpath" };
             var configParameters = new Parameters.ParameterComponent() { Name = "parameters" };
@@ -252,6 +262,11 @@ namespace FhirPathLab_DotNetEngine
             var compiler = new FhirPathCompiler(symbolTable);
             try
             {
+                if (bValidateExpression)
+                {
+                    ValidateFhirPathExpressions(resource?.TypeName ?? "Patient", context, expression, visitorContext, validator, configParameters, outcome, compiler);
+                }
+
                 xps = compiler.Compile(expression);
             }
             catch (Exception ex)
@@ -458,6 +473,59 @@ namespace FhirPathLab_DotNetEngine
             return result;
         }
 
+        private static void ValidateFhirPathExpressions(string resourceType, string context, string expression, JsonExpressionTreeVisitor visitorContext, JsonExpressionTreeVisitor validator, Parameters.ParameterComponent configParameters, OperationOutcome outcome, FhirPathCompiler compiler)
+        {
+            var typeResource = _inspector.GetTypeForFhirType(resourceType);
+            validator.RegisterVariable("resource", typeResource);
+
+            // Validate the context Expression (if it exists)
+            if (!string.IsNullOrEmpty(context))
+            {
+                var contextExpr = compiler.Parse(context);
+                visitorContext.AddInputType(typeResource);
+                var rvc = contextExpr.Accept(visitorContext);
+                foreach (var t in rvc.Types)
+                {
+                    // TODO: Update when the signature also supports adding the CM directly
+                    validator.AddInputType(t.ClassMapping.NativeType);
+                    validator.RegisterVariable("context", t.ClassMapping.NativeType);
+                }
+                // TODO: Support multiple types going into the context?
+            }
+            else
+            {
+                validator.AddInputType(_inspector.GetTypeForFhirType(resourceType));
+                validator.RegisterVariable("context", typeResource);
+            }
+
+            // Validate the Expression itself
+            var ce = compiler.Parse(expression);
+            var rv = ce.Accept(validator);
+            if (validator.Outcome.Issue.Any())
+                outcome.Issue.AddRange(validator.Outcome.Issue);
+            configParameters.Part.Insert(1, new Parameters.ParameterComponent() { Name = "expectedReturnType", Value = new FhirString(rv.ToString()) });
+            configParameters.Part.Insert(2, new Parameters.ParameterComponent() { Name = "parseDebug", Value = new FhirString(validator.ToString()) });
+
+            JsonSerializerSettings JsonSettings = new JsonSerializerSettings
+            {
+                Formatting = Formatting.Indented,
+                NullValueHandling = NullValueHandling.Ignore,
+                DefaultValueHandling = DefaultValueHandling.Ignore,
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                ContractResolver = ShouldSerializeContractResolver.Instance,
+            };
+            configParameters.Part.Insert(2, new Parameters.ParameterComponent() 
+            { 
+                Name = "parseDebugTree", 
+                Value = new FhirString(Newtonsoft.Json.JsonConvert.SerializeObject(validator.ToJson(), JsonSettings))
+            });
+
+            if (validator.Outcome.Issue.Any())
+            {
+                configParameters.Part.Insert(3, new Parameters.ParameterComponent() { Name = "debugOutcome", Resource = validator.Outcome });
+            }
+        }
+
         static readonly FhirJsonSerializer _jsFormatter = new FhirJsonSerializer(new SerializerSettings()
         {
             Pretty = true,
@@ -469,5 +537,23 @@ namespace FhirPathLab_DotNetEngine
             AllowUnrecognizedEnums = true,
             PermissiveParsing = true
         });
+    }
+
+    internal class ShouldSerializeContractResolver : DefaultContractResolver
+    {
+        public static readonly ShouldSerializeContractResolver Instance = new ShouldSerializeContractResolver();
+
+        protected override Newtonsoft.Json.Serialization.JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
+        {
+            Newtonsoft.Json.Serialization.JsonProperty property = base.CreateProperty(member, memberSerialization);
+
+            if (property.PropertyType != typeof(string))
+            {
+                if (property.PropertyType.GetInterface(nameof(IEnumerable)) != null)
+                    property.ShouldSerialize =
+                        instance => (instance?.GetType().GetProperty(property.PropertyName).GetValue(instance) as IEnumerable<object>)?.Count() > 0;
+            }
+            return property;
+        }
     }
 }
