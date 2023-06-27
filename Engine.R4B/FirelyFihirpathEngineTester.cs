@@ -72,9 +72,27 @@ namespace FhirPathLab_DotNetEngine
             else
             {
                 // read the FHIR parameters resource from the request body
-                using (var stream = SerializationUtil.JsonReaderFromStream(req.Body))
+                using (var streamReader = new System.IO.StreamReader(req.Body))
                 {
-                    operationParameters = await _jsParser.ParseAsync<Parameters>(stream);
+                    var settings = new FhirJsonPocoDeserializerSettings()
+                    {
+                        AnnotateResourceParseExceptions = true,
+                        ValidateOnFailedParse = true,
+                        // Validator = null, // Since we can handle multiple issues, let this through
+                    };
+                    var ds = new FhirJsonPocoDeserializer(settings);
+                    try
+                    {
+                        var json = streamReader.ReadToEnd();
+                        operationParameters = ds.DeserializeResource(json) as Parameters;
+                    }
+                    catch (DeserializationFailedException exception)
+                {
+                        if (exception.PartialResult is Parameters p)
+                            operationParameters = p;
+                        else 
+                            return exception.ToOperationOutcome();
+                    }
                 }
             }
 
