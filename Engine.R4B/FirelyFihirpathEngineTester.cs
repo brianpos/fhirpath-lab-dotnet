@@ -35,7 +35,7 @@ namespace FhirPathLab_DotNetEngine
             {
                 Title = "FHIRPath Lab DotNet expression evaluator",
                 Status = PublicationStatus.Active,
-                Date = "2022-07-12",
+                Date = "2023-07-03",
                 Kind = CapabilityStatementKind.Instance,
                 FhirVersion = FHIRVersion.N4_0_1,
                 Format = new[] { "application/fhir+json" }
@@ -87,7 +87,7 @@ namespace FhirPathLab_DotNetEngine
                         operationParameters = ds.DeserializeResource(json) as Parameters;
                     }
                     catch (DeserializationFailedException exception)
-                {
+                    {
                         if (exception.PartialResult is Parameters p)
                             operationParameters = p;
                         else 
