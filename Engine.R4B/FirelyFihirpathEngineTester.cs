@@ -90,7 +90,7 @@ namespace FhirPathLab_DotNetEngine
                     {
                         if (exception.PartialResult is Parameters p)
                             operationParameters = p;
-                        else 
+                        else
                             return exception.ToOperationOutcome();
                     }
                 }
@@ -221,13 +221,26 @@ namespace FhirPathLab_DotNetEngine
                             symbolTable.AddVar(varParam.Name, fv.ToTypedElement());
                         }
                         System.Diagnostics.Trace.WriteLine(fragmentContent);
+                        // TODO: Work out what type this is correctly - it's a fragment, how?
+                        validator.RegisterVariable(varParam.Name, typeof(FhirString));
                     }
                     else if (varParam.Value != null)
+                    {
                         symbolTable.AddVar(varParam.Name, varParam.Value.ToTypedElement(_inspector));
+                        // Maybe this should be tweaking the type based on parsing the string value with the fhirpath engine
+                        validator.RegisterVariable(varParam.Name, varParam.Value.GetType());
+                    }
                     else if (varParam.Resource != null)
+                    {
                         symbolTable.AddVar(varParam.Name, varParam.Resource.ToTypedElement(_inspector));
+                        validator.RegisterVariable(varParam.Name, varParam.Resource.GetType());
+                    }
                     else
+                    {
                         symbolTable.AddVar(varParam.Name, null);
+                        // No value, so just going to assume that it's a string randomly
+                        validator.RegisterVariable(varParam.Name, typeof(FhirString));
+                    }
                 }
             }
 
@@ -532,9 +545,9 @@ namespace FhirPathLab_DotNetEngine
                 ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
                 ContractResolver = ShouldSerializeContractResolver.Instance,
             };
-            configParameters.Part.Insert(2, new Parameters.ParameterComponent() 
-            { 
-                Name = "parseDebugTree", 
+            configParameters.Part.Insert(2, new Parameters.ParameterComponent()
+            {
+                Name = "parseDebugTree",
                 Value = new FhirString(Newtonsoft.Json.JsonConvert.SerializeObject(validator.ToJson(), JsonSettings))
             });
 
