@@ -9,11 +9,11 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-//using r4b::Hl7.Fhir.NetCoreApi.R4;
-//using r4b::Hl7.Fhir.WebApi;
 using r4b::Hl7.Fhir.Model;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Introspection;
+using System.Net.Http;
+using System.Linq;
 
 namespace FhirPathLab_DotNetEngine
 {
@@ -36,6 +36,39 @@ namespace FhirPathLab_DotNetEngine
             result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
             result.Formatters.Add(new r4b::Hl7.Fhir.WebApi.JsonFhirOutputFormatter2());
             return result;
+        }
+
+        [FunctionName("HL7Example-Downloader")]
+        public static async Task<IActionResult> DownloadHl7Example(
+                       [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "downloader")] HttpRequest req,
+                                  ILogger log)
+        {
+            log.LogInformation("DownloadHl7Example");
+
+            // This will download the example from https://hl7.org/fhir/? or https://build.fhir.org/?
+            // It is required to bi-pass the CORS issues that these sites do no permit other web apps to directly request them
+            // and this function app is only configured to be accessible from the fhirpath-lab app.
+            string downloadExampleUrl = req.Query["url"].FirstOrDefault();
+
+            if (!downloadExampleUrl.StartsWith("https://hl7.org/fhir/")
+                && !downloadExampleUrl.StartsWith("https://build.fhir.org/"))
+                return new BadRequestObjectResult("Unsupported URL");
+
+            if (!downloadExampleUrl.EndsWith(".json")
+                && !downloadExampleUrl.EndsWith(".json.html"))
+                return new BadRequestObjectResult("Unsupported URL");
+
+            if (downloadExampleUrl.EndsWith(".json.html"))
+                downloadExampleUrl = downloadExampleUrl.Replace(".json.html", ".json");
+
+            HttpClient client = new HttpClient();
+            var result = await client.GetAsync(downloadExampleUrl);
+            string data = await result.Content.ReadAsStringAsync();
+
+            var response = new Microsoft.AspNetCore.Mvc.ContentResult();
+            response.ContentType = result.Content.Headers.ContentType.ToString();
+            response.Content = data;
+            return response;
         }
 
         [FunctionName("FHIRPathTester")]
