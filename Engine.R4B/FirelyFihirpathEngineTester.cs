@@ -183,15 +183,15 @@ namespace FhirPathLab_DotNetEngine
             {
                 var result = te.Expand(can, p);
                 if (result != null)
-                    return result.ToTypedElement(_inspector);
-                return null;
+                    return ElementNode.CreateList(result.ToTypedElement(_inspector));
+                return ElementNode.EmptyList;
             });
             symbolTable.Add("expand", (FhirPathTerminologies e, string can) =>
             {
                 var result = te.Expand(can, "");
                 if (result != null)
-                    return result.ToTypedElement(_inspector);
-                return null;
+                    return ElementNode.CreateList(result.ToTypedElement(_inspector));
+                return ElementNode.EmptyList;
             });
 
             symbolTable.Add("lookup", (ITypedElement a, ITypedElement b, ITypedElement c) => te.Lookup(a, b, c));
@@ -237,9 +237,9 @@ namespace FhirPathLab_DotNetEngine
                     }
                     else
                     {
-                        symbolTable.AddVar(varParam.Name, null);
+                        symbolTable.AddVariable(varParam.Name, ElementNode.EmptyList);
                         // No value, so just going to assume that it's a string randomly
-                        validator.RegisterVariable(varParam.Name, typeof(FhirString));
+                        validator.RegisterVariable(varParam.Name, typeof(Element));
                     }
                 }
             }
