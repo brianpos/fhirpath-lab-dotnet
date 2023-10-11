@@ -17,7 +17,6 @@ using Hl7.Fhir.Rest;
 using Hl7.Fhir.Specification.Source;
 using System.Text;
 using Hl7.Fhir.Introspection;
-using Hl7.Fhir.WebApi;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Collections;
