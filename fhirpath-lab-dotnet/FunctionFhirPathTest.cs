@@ -78,7 +78,7 @@ namespace FhirPathLab_DotNetEngine
         {
             log.LogInformation("FhirPath Expression dotnet Evaluation");
 
-            var resultResource = await r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.2.0 (R4B)");
+            var resultResource = await r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.3.0 (R4B)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new r4b::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
@@ -94,7 +94,7 @@ namespace FhirPathLab_DotNetEngine
         {
             log.LogInformation("FhirPath Expression dotnet Evaluation");
 
-            var resultResource = await r5.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.2.0 (R5)");
+            var resultResource = await r5.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.3.0 (R5)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new r5::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
