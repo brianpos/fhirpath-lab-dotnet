@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="..\Engine.R4B\FirelyFihirpathEngineTester.cs" Link="FirelyFihirpathEngineTester.cs" />
     <Compile Include="..\Engine.R4B\Helpers\CanonicalUrl.cs" Link="Helpers\CanonicalUrl.cs" />
+    <Compile Include="..\Engine.R4B\Helpers\ExtensionMethods.cs" Link="ExtensionMethods.cs" />
     <Compile Include="..\Engine.R4B\Helpers\FhirPathTerminologies.cs" Link="Helpers\FhirPathTerminologies.cs" />
     <Compile Include="..\Engine.R4B\Helpers\JsonExpressionTreeVisitor.cs" Link="Helpers\JsonExpressionTreeVisitor.cs" />
     <Compile Include="..\Engine.R4B\Helpers\SymbolTableExtensions.cs" Link="Helpers\SymbolTableExtensions.cs" />
