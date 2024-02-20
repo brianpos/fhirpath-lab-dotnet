@@ -444,7 +444,22 @@ namespace FhirPathLab_DotNetEngine
                     try
                     {
                         traceList.Clear();
-                        outputValues = xps(ctExpr.Value, evalContext).ToList();
+                        if (((ctExpr.Value as ScopedNode).Current as IFhirValueProvider).FhirValue != null)
+                        {
+                            var res = xps(ctExpr.Value, evalContext);
+                            outputValues = res.ToList();
+                        }
+                        else
+                        {
+                            outputValues = ElementNode.EmptyList;
+                            outcome.Issue.Add(new OperationOutcome.IssueComponent()
+                            {
+                                Severity = OperationOutcome.IssueSeverity.Error,
+                                Code = OperationOutcome.IssueType.Value,
+                                Details = new CodeableConcept() { Text = $"Context Expression output requires a resource {ctExpr.Key}" },
+                                // Diagnostics = ex.Message
+                            });
+                        }
                     }
                     catch (NullReferenceException ex)
                     {
