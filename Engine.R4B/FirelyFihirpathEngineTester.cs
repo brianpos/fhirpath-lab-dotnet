@@ -21,6 +21,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Collections;
 using System.Reflection;
+using Hl7.Fhir.Specification.Terminology;
+using System.Net.Http;
+using System.Threading;
 
 namespace FhirPathLab_DotNetEngine
 {
@@ -130,6 +133,58 @@ namespace FhirPathLab_DotNetEngine
             return resultResource;
         }
 
+        class LoggingHandler : DelegatingHandler
+        {
+            public LoggingHandler(HttpMessageHandler innerHandler, Action<OperationOutcome> errorLogger) : base(innerHandler)
+            {
+                _errorLogger = errorLogger;
+            }
+
+            private Action<OperationOutcome> _errorLogger;
+
+            protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                return base.Send(request, cancellationToken);
+            }
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                Console.WriteLine("Request:");
+                Console.WriteLine(request.ToString());
+                if (request.Content != null)
+                {
+                    // Console.WriteLine(await request.Content.ReadAsStringAsync());
+                }
+                Console.WriteLine();
+
+                var result = await base.SendAsync(request, cancellationToken);
+
+                Console.WriteLine("Response:");
+                Console.WriteLine(result.ToString());
+                if (result.Content != null)
+                {
+                    var resultContentString = await result.Content.ReadAsStringAsync();
+                    Console.WriteLine(resultContentString);
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        if (result.Content.Headers.ContentType.MediaType.Contains("xml") == true)
+                        {
+                            var r = new FhirXmlParser().Parse<OperationOutcome>(resultContentString);
+                            if (_errorLogger != null)
+                                _errorLogger(r);
+                }
+                        if (result.Content.Headers.ContentType.MediaType.Contains("json") == true)
+                        {
+                            var r = new FhirJsonParser().Parse<OperationOutcome>(resultContentString);
+                            if (_errorLogger != null)
+                                _errorLogger(r);
+                        }
+                    }
+                }
+                Console.WriteLine();
+                return result;
+            }
+        }
+
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
         public static Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression)
         {
@@ -175,8 +230,15 @@ namespace FhirPathLab_DotNetEngine
                 evalContext = new FhirEvaluationContext();
             }
 
+            if (!string.IsNullOrEmpty(terminologyServerUrl))
+            {
+                HttpClientHandler handler = new HttpClientHandler();
+                var tsClient = new FhirClient(terminologyServerUrl, null, new LoggingHandler(handler, (outcome) => { result.Parameter.Add(new Parameters.ParameterComponent() { Name = "ts-error", Resource = outcome }); }));
+                evalContext.TerminologyService = new ExternalTerminologyService(tsClient);
+            }
+
             SymbolTable symbolTable = new SymbolTable(FhirPathCompiler.DefaultSymbolTable);
-            var te = new FhirPathTerminologies() { TerminologyServerUrl = terminologyServerUrl ?? "https://sqlonfhir-r4.azurewebsites.net/fhir" };
+            var te = new FhirPathTerminologies() { TerminologyServerUrl = terminologyServerUrl ?? "https://r4.ontoserver.csiro.au/fhir" };
             symbolTable.AddVar("terminologies", te);
             symbolTable.Add("expand", (FhirPathTerminologies e, string can, string p) =>
             {
