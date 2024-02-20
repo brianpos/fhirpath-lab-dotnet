@@ -1,4 +1,8 @@
-﻿using Hl7.Fhir.Model;
+﻿using Hl7.Fhir.ElementModel;
+using Hl7.Fhir.FhirPath;
+using Hl7.Fhir.Model;
+using Hl7.FhirPath.Expressions;
+using Hl7.FhirPath;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using System;
@@ -55,6 +59,62 @@ namespace FhirPathLab_DotNetEngine
                 }
             }
             return list;
+        }
+
+        internal static bool _fhirSymbolTableLocalExtensionsAdded = false;
+        public static void PrepareLocalFhirSymbolTableFunctions()
+        {
+            if (!_fhirSymbolTableLocalExtensionsAdded)
+            {
+                _fhirSymbolTableLocalExtensionsAdded = true;
+                FhirPathCompiler.DefaultSymbolTable.AddLocalFhirExtensions();
+            }
+        }
+
+        public static SymbolTable AddLocalFhirExtensions(this SymbolTable st)
+        {
+            // Custom function that returns the name of the property, rather than its value
+            st.Add("propname", (object f) =>
+            {
+                if (f is IEnumerable<ITypedElement>)
+                {
+                    object[] bits = (f as IEnumerable<ITypedElement>).Select(i =>
+                    {
+                        return i.Name;
+                    }).ToArray();
+                    return ElementNode.CreateList(bits);
+                }
+                return ElementNode.CreateList("?");
+            });
+            st.Add("pathname", (object f) =>
+            {
+                if (f is IEnumerable<ITypedElement>)
+                {
+                    object[] bits = (f as IEnumerable<ITypedElement>).Select(i =>
+                    {
+                        return i.Location;
+                    }).ToArray();
+                    return ElementNode.CreateList(bits);
+                }
+                return ElementNode.CreateList("?");
+            });
+            st.Add("shortpathname", (object f) =>
+            {
+                if (f is IEnumerable<ITypedElement>)
+                {
+                    var bits = (f as IEnumerable<ITypedElement>).Select(i =>
+                    {
+                        if ((i as ScopedNode).Current is IShortPathGenerator spg)
+                        {
+                            return spg.ShortPath;
+                        }
+                        return "?";
+                    });
+                    return ElementNode.CreateList(bits);
+                }
+                return ElementNode.CreateList("?");
+            });
+            return st;
         }
     }
 }

@@ -195,6 +195,8 @@ namespace FhirPathLab_DotNetEngine
                 ModelInfo.SupportedResources, ModelInfo.OpenTypes);
 
             Hl7.Fhir.FhirPath.ElementNavFhirExtensions.PrepareFhirSymbolTableFunctions();
+            ExtensionMethods.PrepareLocalFhirSymbolTableFunctions();
+
             var result = new Parameters() { Id = "fhirpath" };
             var configParameters = new Parameters.ParameterComponent() { Name = "parameters" };
             result.Parameter.Add(configParameters);
