@@ -85,7 +85,7 @@ namespace FhirPathLab_DotNetEngine
                     var ds = new FhirJsonPocoDeserializer(settings);
                     try
                     {
-                        var json = streamReader.ReadToEnd();
+                        var json = await streamReader.ReadToEndAsync();
                         operationParameters = ds.DeserializeResource(json) as Parameters;
                     }
                     catch (DeserializationFailedException exception)

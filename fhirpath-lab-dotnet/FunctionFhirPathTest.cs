@@ -5,8 +5,8 @@ using System;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using r4b::Hl7.Fhir.Model;
@@ -17,16 +17,21 @@ using System.Linq;
 
 namespace FhirPathLab_DotNetEngine
 {
-    public static class FunctionFhirPathTestR4B
+    public class FunctionFhirPathTestR4B
     {
-        public static ModelInspector _inspectorR4B = ModelInspector.ForType(typeof(Patient));
-
-        [FunctionName("FHIRPathTester-CapabilityStatement")]
-        public static async Task<IActionResult> RunCapabilityStatement(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "metadata")] HttpRequest req,
-            ILogger log)
+		public FunctionFhirPathTestR4B(ILogger<FunctionFhirPathTestR4B> logger)
         {
-            log.LogInformation("CapabilityStatement");
+            _logger = logger;
+        }
+        private readonly ILogger<FunctionFhirPathTestR4B> _logger;
+
+		public static ModelInspector _inspectorR4B = ModelInspector.ForType(typeof(Patient));
+
+        [Function("FHIRPathTester-CapabilityStatement")]
+        public async Task<IActionResult> RunCapabilityStatement(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "metadata")] HttpRequest req)
+        {
+            _logger?.LogInformation("CapabilityStatement");
 
             var resultResource = r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunCapabilityStatement(req);
             resultResource.FhirVersion = FHIRVersion.N4_0_1;
@@ -38,12 +43,11 @@ namespace FhirPathLab_DotNetEngine
             return result;
         }
 
-        [FunctionName("HL7Example-Downloader")]
-        public static async Task<IActionResult> DownloadHl7Example(
-                       [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "downloader")] HttpRequest req,
-                                  ILogger log)
+        [Function("HL7Example-Downloader")]
+        public async Task<IActionResult> DownloadHl7Example(
+                       [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "downloader")] HttpRequest req)
         {
-            log.LogInformation("DownloadHl7Example");
+            _logger?.LogInformation("DownloadHl7Example");
 
             // This will download the example from https://hl7.org/fhir/? or https://build.fhir.org/?
             // It is required to bi-pass the CORS issues that these sites do no permit other web apps to directly request them
@@ -71,14 +75,13 @@ namespace FhirPathLab_DotNetEngine
             return response;
         }
 
-        [FunctionName("FHIRPathTester")]
-        public static async Task<IActionResult> RunFhirPathTestR4(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath")] HttpRequest req,
-            ILogger log)
+        [Function("FHIRPathTester")]
+        public async Task<IActionResult> RunFhirPathTestR4(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath")] HttpRequest req)
         {
-            log.LogInformation("FhirPath Expression dotnet Evaluation");
+            _logger?.LogInformation("FhirPath Expression dotnet Evaluation");
 
-            var resultResource = await r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.3.0 (R4B)");
+            var resultResource = await r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, _logger, "Firely-5.3.0 (R4B)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new r4b::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
@@ -87,14 +90,13 @@ namespace FhirPathLab_DotNetEngine
             return result;
         }
 
-        [FunctionName("FHIRPathTesterR5")]
-        public static async Task<IActionResult> RunFhirPathTestR5(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath-r5")] HttpRequest req,
-            ILogger log)
+        [Function("FHIRPathTesterR5")]
+        public async Task<IActionResult> RunFhirPathTestR5(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath-r5")] HttpRequest req)
         {
-            log.LogInformation("FhirPath Expression dotnet Evaluation");
+            _logger?.LogInformation("FhirPath Expression dotnet Evaluation");
 
-            var resultResource = await r5.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, log, "Firely-5.3.0 (R5)");
+            var resultResource = await r5.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, _logger, "Firely-5.3.0 (R5)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new r5::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
@@ -105,7 +107,7 @@ namespace FhirPathLab_DotNetEngine
 
         // To keep the Azure function "warm" trigger it every 15 minutes
         // https://mikhail.io/serverless/coldstarts/azure/
-        [FunctionName("Warmer")]
+        [Function("Warmer")]
         public static void WarmUp([TimerTrigger("0 */15 * * * *")] TimerInfo timer)
         {
             // Do nothing
