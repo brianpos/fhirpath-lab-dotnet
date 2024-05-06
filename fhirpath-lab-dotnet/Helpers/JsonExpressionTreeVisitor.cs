@@ -30,6 +30,12 @@ namespace FhirPathLab_DotNetEngine
                 ExpressionType = expression.GetType().Name,
                 Name = expression.Value.ToString(),
             };
+            //if (expression.Location is FhirPathExpressionLocationInfo loc)
+            //{
+            //    r.Position = loc.RawPosition;
+            //    r.Length = loc.Length;
+            //}
+
             if (!_stack.Any())
                 _stack.Push(r); // this is then likely the only property
             else
@@ -47,6 +53,11 @@ namespace FhirPathLab_DotNetEngine
                 ExpressionType = expression.GetType().Name,
                 Name = expression.FunctionName.Replace("binary.", ""),
             };
+            //if (expression.Location is FhirPathExpressionLocationInfo loc)
+            //{
+            //    r.Position = loc.RawPosition;
+            //    r.Length = loc.Length;
+            //}
             if (expression is ChildExpression ce)
                 r.Name = ce.ChildName;
             if (_stack.Any())
@@ -75,6 +86,11 @@ namespace FhirPathLab_DotNetEngine
             return result;
         }
 
+        //public override FhirPathVisitorProps VisitCustomExpression(CustomExpression expression)
+        //{
+        //    return base.VisitCustomExpression(expression);
+        //}
+
         public override FhirPathVisitorProps VisitVariableRef(VariableRefExpression expression)
         {
             var result = base.VisitVariableRef(expression);
@@ -84,6 +100,11 @@ namespace FhirPathLab_DotNetEngine
                 Name = expression.Name,
                 ReturnType = result.ToString(),
             };
+            //if (expression.Location is FhirPathExpressionLocationInfo loc)
+            //{
+            //    r.Position = loc.RawPosition;
+            //    r.Length = loc.Length;
+            //}
             if (!_stack.Any())
                 _stack.Push(r); // this is then likely the only property
             else
@@ -106,6 +127,11 @@ namespace FhirPathLab_DotNetEngine
         public string Name { get; set; }
         public List<JsonRep> Arguments { get; private set; } = new List<JsonRep>();
         public string ReturnType { get; set; }
+
+        public int? Line { get; set; }
+        public int? Column { get; set; }
+        public int? Position { get; set; }
+        public int? Length { get; set; }
     }
 
     public static class JsonVisualizerExpressionExtensions
