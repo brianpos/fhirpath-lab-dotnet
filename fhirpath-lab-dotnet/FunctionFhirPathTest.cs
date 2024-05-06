@@ -9,11 +9,10 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using r4b::Hl7.Fhir.Model;
 using Hl7.Fhir.Model;
-using Hl7.Fhir.Introspection;
 using System.Net.Http;
 using System.Linq;
+using Hl7.Fhir.WebApi;
 
 namespace FhirPathLab_DotNetEngine
 {
@@ -25,9 +24,7 @@ namespace FhirPathLab_DotNetEngine
         }
         private readonly ILogger<FunctionFhirPathTestR4B> _logger;
 
-		public static ModelInspector _inspectorR4B = ModelInspector.ForType(typeof(Patient));
-
-        [Function("FHIRPathTester-CapabilityStatement")]
+		[Function("FHIRPathTester-CapabilityStatement")]
         public async Task<IActionResult> RunCapabilityStatement(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "metadata")] HttpRequest req)
         {
@@ -37,9 +34,9 @@ namespace FhirPathLab_DotNetEngine
             resultResource.FhirVersion = FHIRVersion.N4_0_1;
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
-            var result = new r4b::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
+            var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
             result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
-            result.Formatters.Add(new r4b::Hl7.Fhir.WebApi.JsonFhirOutputFormatter2());
+            result.Formatters.Add(new JsonFhirOutputFormatter2(r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester._inspector));
             return result;
         }
 
@@ -84,9 +81,9 @@ namespace FhirPathLab_DotNetEngine
             var resultResource = await r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, _logger, "Firely-5.3.0 (R4B)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
-            var result = new r4b::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
+            var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
             result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
-            result.Formatters.Add(new r4b::Hl7.Fhir.WebApi.JsonFhirOutputFormatter2());
+            result.Formatters.Add(new JsonFhirOutputFormatter2(r4b.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester._inspector));
             return result;
         }
 
@@ -99,9 +96,9 @@ namespace FhirPathLab_DotNetEngine
             var resultResource = await r5.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester.RunFhirPathTest(req, _logger, "Firely-5.3.0 (R5)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
-            var result = new r5::Hl7.Fhir.NetCoreApi.FhirObjectResult(HttpStatusCode.OK, resultResource);
+            var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
             result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
-            result.Formatters.Add(new r5::Hl7.Fhir.WebApi.JsonFhirOutputFormatter2());
+            result.Formatters.Add(new JsonFhirOutputFormatter2(r5.FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester._inspector));
             return result;
         }
 
