@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System;
 using Hl7.Fhir.Rest;
 using Hl7.Fhir.Model;
+using Hl7.Fhir.Introspection;
 
 namespace FhirPathLab_DotNetEngine
 {
@@ -12,7 +13,14 @@ namespace FhirPathLab_DotNetEngine
     /// </summary>
     public class FhirPathTerminologies : ITypedElement
     {
-        public string TerminologyServerUrl { get; set; }
+		public FhirPathTerminologies(ModelInspector inspector, string tsUrl)
+        {
+            _inspector = inspector;
+            TerminologyServerUrl = tsUrl;
+		}
+		protected readonly ModelInspector _inspector;
+
+		public string TerminologyServerUrl { get; private init; }
 
         public string Name => "terminologes";
 
@@ -32,7 +40,7 @@ namespace FhirPathLab_DotNetEngine
         // expand(valueSet, params) : ValueSet
         public ValueSet Expand(string vsUrl, string parameters)
         {
-            var fc = new FhirClient(TerminologyServerUrl, new FhirClientSettings() { VerifyFhirVersion = false });
+            var fc = new BaseFhirClient(new Uri(TerminologyServerUrl), _inspector, new FhirClientSettings() { VerifyFhirVersion = false });
             var nvp = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(parameters);
             var canUrl = new CanonicalUrl(vsUrl);
             var expParams = new Parameters();
@@ -52,7 +60,7 @@ namespace FhirPathLab_DotNetEngine
         // lookup(coded, params) : Parameters
         public Parameters Lookup(string code, string parameters)
         {
-            FhirClient fc = new FhirClient(TerminologyServerUrl, new FhirClientSettings() { VerifyFhirVersion = false });
+            var fc = new BaseFhirClient(new Uri(TerminologyServerUrl), _inspector, new FhirClientSettings() { VerifyFhirVersion = false });
             Parameters reqParams = ExtractLookupParameters(parameters);
             reqParams.Add("code", new Code(code));
             return fc.TypeOperation<CodeSystem>("lookup", reqParams) as Parameters;
@@ -60,7 +68,7 @@ namespace FhirPathLab_DotNetEngine
 
         public Parameters Lookup(Coding coding, string parameters)
         {
-            FhirClient fc = new FhirClient(TerminologyServerUrl, new FhirClientSettings() { VerifyFhirVersion = false });
+            var fc = new BaseFhirClient(new Uri(TerminologyServerUrl), _inspector, new FhirClientSettings() { VerifyFhirVersion = false });
             Parameters reqParams = ExtractLookupParameters(parameters);
             reqParams.Add("coding", coding);
             return fc.TypeOperation<CodeSystem>("lookup", reqParams) as Parameters;
@@ -146,13 +154,13 @@ namespace FhirPathLab_DotNetEngine
             {
                 var result = Lookup(coding, parameters);
                 if (result != null)
-                    return result.ToTypedElement(FirelyFhirpathEngineTester._inspector);
+                    return result.ToTypedElement(_inspector);
             }
             if (code != null)
             {
                 var result = Lookup(code, parameters);
                 if (result != null)
-                    return result.ToTypedElement(FirelyFhirpathEngineTester._inspector);
+                    return result.ToTypedElement(_inspector);
             }
             return null;
         }

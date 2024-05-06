@@ -45,7 +45,7 @@ namespace FhirPathLab_DotNetEngine
             JsonRep r = new JsonRep()
             {
                 ExpressionType = expression.GetType().Name,
-                Name = expression.FunctionName.Replace("binary.",""),
+                Name = expression.FunctionName.Replace("binary.", ""),
             };
             if (expression is ChildExpression ce)
                 r.Name = ce.ChildName;
@@ -110,12 +110,9 @@ namespace FhirPathLab_DotNetEngine
 
     public static class JsonVisualizerExpressionExtensions
     {
-        public static JsonRep ToJson(this Expression expr)
+        public static JsonRep ToJson(this Expression expr, ModelInspector mi, List<string> SupportedResources, Type[] OpenTypes)
         {
-            var dumper = new JsonExpressionTreeVisitor(
-                ModelInspector.ForAssembly(typeof(Hl7.Fhir.Model.Patient).Assembly),
-                Hl7.Fhir.Model.ModelInfo.SupportedResources,
-                Hl7.Fhir.Model.ModelInfo.OpenTypes);
+            var dumper = new JsonExpressionTreeVisitor(mi, SupportedResources, OpenTypes);
             var result = expr.Accept(dumper);
             return dumper.ToJson();
         }

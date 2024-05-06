@@ -27,9 +27,29 @@ using System.Threading;
 
 namespace FhirPathLab_DotNetEngine
 {
-    public static class FirelyFhirpathEngineTester
+    public class FirelyFhirpathEngineTester
     {
-        public static ModelInspector _inspector = ModelInspector.ForType(typeof(Patient));
+        public FirelyFhirpathEngineTester(ModelInspector mi, List<string> SupportedResources, Type[] OpenTypes)
+        {
+            _inspector = mi;
+            _supportedResources = SupportedResources;
+            _openTypes = OpenTypes;
+
+            var jsSettings = new SerializerSettings()
+            {
+                Pretty = true,
+                AppendNewLine = true,
+            };
+            _jsFormatter = new CommonFhirJsonSerializer(_inspector, jsSettings);
+        }
+        protected readonly ModelInspector _inspector;
+        protected readonly List<string> _supportedResources;
+        protected readonly Type[] _openTypes;
+        public Func<string, FhirClientSettings, HttpMessageHandler, BaseFhirClient> CreateFhirClient;
+        public Func<string, OperationOutcome> _xmlParser;
+        public Func<string, OperationOutcome> _jsonParser;
+
+        CommonFhirJsonSerializer _jsFormatter;
 
         public static CapabilityStatement RunCapabilityStatement(HttpRequest req)
         {
@@ -57,7 +77,7 @@ namespace FhirPathLab_DotNetEngine
             return resultResource;
         }
 
-        public static async Task<Resource> RunFhirPathTest(HttpRequest req,
+        public async Task<Resource> RunFhirPathTest(HttpRequest req,
             ILogger log, string firelyVersion)
         {
             log.LogInformation("FhirPath Expression dotnet Evaluation");
@@ -82,7 +102,7 @@ namespace FhirPathLab_DotNetEngine
                         ValidateOnFailedParse = true,
                         // Validator = null, // Since we can handle multiple issues, let this through
                     };
-                    var ds = new FhirJsonPocoDeserializer(settings);
+                    var ds = new BaseFhirJsonPocoDeserializer(_inspector, settings);
                     try
                     {
                         var json = await streamReader.ReadToEndAsync();
@@ -110,7 +130,7 @@ namespace FhirPathLab_DotNetEngine
                 {
                     try
                     {
-                        var remoteServer = new FhirClient(ri.BaseUri, new FhirClientSettings() { VerifyFhirVersion = false });
+                        var remoteServer = new BaseFhirClient(ri.BaseUri, _inspector, new FhirClientSettings() { VerifyFhirVersion = false });
                         resource = await remoteServer.GetAsync(ri);
                     }
                     catch (FhirOperationException fex)
@@ -135,11 +155,14 @@ namespace FhirPathLab_DotNetEngine
 
         class LoggingHandler : DelegatingHandler
         {
-            public LoggingHandler(HttpMessageHandler innerHandler, Action<OperationOutcome> errorLogger) : base(innerHandler)
+            public LoggingHandler(HttpMessageHandler innerHandler, Func<string, OperationOutcome> xmlParser, Func<string, OperationOutcome> jsonParser, Action<OperationOutcome> errorLogger) : base(innerHandler)
             {
                 _errorLogger = errorLogger;
+                _xmlParser = xmlParser;
+                _jsonParser = jsonParser;
             }
-
+            public Func<string, OperationOutcome> _xmlParser;
+            public Func<string, OperationOutcome> _jsonParser;
             private Action<OperationOutcome> _errorLogger;
 
             protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -168,13 +191,13 @@ namespace FhirPathLab_DotNetEngine
                     {
                         if (result.Content.Headers.ContentType.MediaType.Contains("xml") == true)
                         {
-                            var r = new FhirXmlParser().Parse<OperationOutcome>(resultContentString);
+                            var r = _xmlParser(resultContentString);
                             if (_errorLogger != null)
                                 _errorLogger(r);
-                }
+                        }
                         if (result.Content.Headers.ContentType.MediaType.Contains("json") == true)
                         {
-                            var r = new FhirJsonParser().Parse<OperationOutcome>(resultContentString);
+                            var r = _jsonParser(resultContentString);
                             if (_errorLogger != null)
                                 _errorLogger(r);
                         }
@@ -186,13 +209,13 @@ namespace FhirPathLab_DotNetEngine
         }
 
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
-        public static Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression)
+        public Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression)
         {
             var visitorContext = new JsonExpressionTreeVisitor(_inspector,
-                ModelInfo.SupportedResources, ModelInfo.OpenTypes);
+                _supportedResources, _openTypes);
 
             var validator = new JsonExpressionTreeVisitor(_inspector,
-                ModelInfo.SupportedResources, ModelInfo.OpenTypes);
+                _supportedResources, _openTypes);
 
             Hl7.Fhir.FhirPath.ElementNavFhirExtensions.PrepareFhirSymbolTableFunctions();
             ExtensionMethods.PrepareLocalFhirSymbolTableFunctions();
@@ -235,12 +258,12 @@ namespace FhirPathLab_DotNetEngine
             if (!string.IsNullOrEmpty(terminologyServerUrl))
             {
                 HttpClientHandler handler = new HttpClientHandler();
-                var tsClient = new FhirClient(terminologyServerUrl, null, new LoggingHandler(handler, (outcome) => { result.Parameter.Add(new Parameters.ParameterComponent() { Name = "ts-error", Resource = outcome }); }));
+                var tsClient = new BaseFhirClient(new Uri(terminologyServerUrl), new LoggingHandler(handler, _xmlParser, _jsonParser, (outcome) => { result.Parameter.Add(new Parameters.ParameterComponent() { Name = "ts-error", Resource = outcome }); }), _inspector);
                 evalContext.TerminologyService = new ExternalTerminologyService(tsClient);
             }
 
             SymbolTable symbolTable = new SymbolTable(FhirPathCompiler.DefaultSymbolTable);
-            var te = new FhirPathTerminologies() { TerminologyServerUrl = terminologyServerUrl ?? "https://r4.ontoserver.csiro.au/fhir" };
+            var te = new FhirPathTerminologies(_inspector, terminologyServerUrl ?? "https://r4.ontoserver.csiro.au/fhir");
             symbolTable.AddVar("terminologies", te);
             symbolTable.Add("expand", (FhirPathTerminologies e, string can, string p) =>
             {
@@ -322,7 +345,7 @@ namespace FhirPathLab_DotNetEngine
                 {
                     try
                     {
-                        var wr = new CommonWebResolver((uri) => new FhirClient(uri));
+                        var wr = new CommonWebResolver((uri) => new BaseFhirClient(uri, _inspector));
                         var t = wr.ResolveByUri(referenceValue);
                         if (t != null)
                         {
@@ -582,7 +605,7 @@ namespace FhirPathLab_DotNetEngine
             return result;
         }
 
-        private static void ValidateFhirPathExpressions(string resourceType, string context, string expression, JsonExpressionTreeVisitor visitorContext, JsonExpressionTreeVisitor validator, Parameters.ParameterComponent configParameters, OperationOutcome outcome, FhirPathCompiler compiler)
+        private void ValidateFhirPathExpressions(string resourceType, string context, string expression, JsonExpressionTreeVisitor visitorContext, JsonExpressionTreeVisitor validator, Parameters.ParameterComponent configParameters, OperationOutcome outcome, FhirPathCompiler compiler)
         {
             var typeResource = _inspector.GetTypeForFhirType(resourceType);
             validator.RegisterVariable("resource", typeResource);
@@ -634,18 +657,6 @@ namespace FhirPathLab_DotNetEngine
                 configParameters.Part.Insert(3, new Parameters.ParameterComponent() { Name = "debugOutcome", Resource = validator.Outcome });
             }
         }
-
-        static readonly FhirJsonSerializer _jsFormatter = new FhirJsonSerializer(new SerializerSettings()
-        {
-            Pretty = true,
-            AppendNewLine = true,
-        });
-        static readonly FhirJsonParser _jsParser = new FhirJsonParser(new ParserSettings()
-        {
-            AcceptUnknownMembers = true,
-            AllowUnrecognizedEnums = true,
-            PermissiveParsing = true
-        });
     }
 
     internal class ShouldSerializeContractResolver : DefaultContractResolver

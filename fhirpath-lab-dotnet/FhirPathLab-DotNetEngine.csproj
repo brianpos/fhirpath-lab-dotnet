@@ -6,32 +6,33 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.22.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.17.2" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="1.2.1" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="1.2.0" />
 
-    <PackageReference Include="Hl7.Fhir.R4B" Version="5.3.0">
+    <PackageReference Include="Hl7.Fhir.Base" Version="5.8.1" />
+    <PackageReference Include="Hl7.Fhir.R4B" Version="5.8.1">
       <Aliases>r4b</Aliases>
     </PackageReference>
-    <PackageReference Include="Hl7.Fhir.Specification.R4B" Version="5.3.0">
-      <Aliases>r4b</Aliases>
-    </PackageReference>
-    <PackageReference Include="Hl7.Fhir.R5" Version="5.3.0">
+    <PackageReference Include="Hl7.Fhir.R5" Version="5.8.1">
       <Aliases>r5</Aliases>
     </PackageReference>
+    <PackageReference Include="brianpos.Fhir.Base.FhirPath.Validator" Version="5.8.1-rc2" />
   </ItemGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\Engine.R4B\Engine.R4B.csproj">
-      <Aliases>r4b</Aliases>
-    </ProjectReference>
-    <ProjectReference Include="..\Engine.R5\Engine.R5.csproj">
-      <Aliases>r5</Aliases>
-    </ProjectReference>
+    <Compile Include="..\Engine.R4B\FirelyFhirpathEngineTester.cs" Link="FirelyFihirpathEngineTester.cs" />
+    <Compile Include="..\Engine.R4B\Helpers\CanonicalUrl.cs" Link="Helpers\CanonicalUrl.cs" />
+    <Compile Include="..\Engine.R4B\Helpers\ExtensionMethods.cs" Link="Helpers\ExtensionMethods.cs" />
+    <Compile Include="..\Engine.R4B\Helpers\FhirPathTerminologies.cs" Link="Helpers\FhirPathTerminologies.cs" />
+    <Compile Include="..\Engine.R4B\Helpers\JsonExpressionTreeVisitor.cs" Link="Helpers\JsonExpressionTreeVisitor.cs" />
+    <Compile Include="..\Engine.R4B\Helpers\SymbolTableExtensions.cs" Link="Helpers\SymbolTableExtensions.cs" />
   </ItemGroup>
+
   <ItemGroup>
     <Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
   </ItemGroup>
