@@ -30,11 +30,11 @@ namespace FhirPathLab_DotNetEngine
                 ExpressionType = expression.GetType().Name,
                 Name = expression.Value.ToString(),
             };
-            //if (expression.Location is FhirPathExpressionLocationInfo loc)
-            //{
-            //    r.Position = loc.RawPosition;
-            //    r.Length = loc.Length;
-            //}
+            if (expression.Location is FhirPathExpressionLocationInfo loc)
+            {
+                r.Position = loc.RawPosition;
+                r.Length = loc.Length;
+            }
 
             if (!_stack.Any())
                 _stack.Push(r); // this is then likely the only property
@@ -53,11 +53,11 @@ namespace FhirPathLab_DotNetEngine
                 ExpressionType = expression.GetType().Name,
                 Name = expression.FunctionName.Replace("binary.", ""),
             };
-            //if (expression.Location is FhirPathExpressionLocationInfo loc)
-            //{
-            //    r.Position = loc.RawPosition;
-            //    r.Length = loc.Length;
-            //}
+            if (expression.Location is FhirPathExpressionLocationInfo loc)
+            {
+                r.Position = loc.RawPosition;
+                r.Length = loc.Length;
+            }
             if (expression is ChildExpression ce)
                 r.Name = ce.ChildName;
             if (_stack.Any())
@@ -100,11 +100,11 @@ namespace FhirPathLab_DotNetEngine
                 Name = expression.Name,
                 ReturnType = result.ToString(),
             };
-            //if (expression.Location is FhirPathExpressionLocationInfo loc)
-            //{
-            //    r.Position = loc.RawPosition;
-            //    r.Length = loc.Length;
-            //}
+            if (expression.Location is FhirPathExpressionLocationInfo loc)
+            {
+                r.Position = loc.RawPosition;
+                r.Length = loc.Length;
+            }
             if (!_stack.Any())
                 _stack.Push(r); // this is then likely the only property
             else
