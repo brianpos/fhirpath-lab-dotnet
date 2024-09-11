@@ -467,7 +467,7 @@ namespace FhirPathLab_DotNetEngine
                     try
                     {
                         traceList.Clear();
-                        if (((ctExpr.Value as ScopedNode).Current as IFhirValueProvider).FhirValue != null)
+                        if (((ctExpr.Value as ScopedNode)?.Current as IFhirValueProvider)?.FhirValue != null)
                         {
                             var res = xps(ctExpr.Value, evalContext);
                             outputValues = res.ToList();
