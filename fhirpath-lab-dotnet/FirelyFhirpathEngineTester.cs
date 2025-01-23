@@ -247,7 +247,7 @@ namespace FhirPathLab_DotNetEngine
             {
                 // result.Parameter.Add(new Parameters.ParameterComponent() { Name = "input", Resource = resource });
                 inputNav = new ScopedNode(resource.ToTypedElement(_inspector));
-                evalContext = new FhirEvaluationContext(inputNav);
+                evalContext = new FhirEvaluationContext().WithResourceOverrides(inputNav);
             }
             else
             {

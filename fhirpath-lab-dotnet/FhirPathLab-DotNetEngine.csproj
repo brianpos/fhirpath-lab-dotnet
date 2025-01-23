@@ -14,14 +14,14 @@
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="1.4.0" />
 
-    <PackageReference Include="Hl7.Fhir.Base" Version="5.10.0" />
-    <PackageReference Include="Hl7.Fhir.R4B" Version="5.10.0">
+    <PackageReference Include="Hl7.Fhir.Base" Version="5.11.1" />
+    <PackageReference Include="Hl7.Fhir.R4B" Version="5.11.1">
       <Aliases>r4b</Aliases>
     </PackageReference>
-    <PackageReference Include="Hl7.Fhir.R5" Version="5.10.0">
+    <PackageReference Include="Hl7.Fhir.R5" Version="5.11.1">
       <Aliases>r5</Aliases>
     </PackageReference>
-    <PackageReference Include="brianpos.Fhir.Base.FhirPath.Validator" Version="5.10.0-rc1" />
+    <PackageReference Include="brianpos.Fhir.Base.FhirPath.Validator" Version="5.11.1-rc4" />
   </ItemGroup>
 
   <ItemGroup>

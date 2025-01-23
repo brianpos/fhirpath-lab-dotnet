@@ -15,26 +15,27 @@ using System.Linq;
 using Hl7.Fhir.WebApi;
 using Hl7.Fhir.Introspection;
 using System.Collections.Generic;
+using System.IO;
 
 namespace FhirPathLab_DotNetEngine
 {
     public class FunctionFhirPathTestR4B
     {
-		public FunctionFhirPathTestR4B(ILogger<FunctionFhirPathTestR4B> logger)
+        public FunctionFhirPathTestR4B(ILogger<FunctionFhirPathTestR4B> logger)
         {
             _logger = logger;
         }
         private readonly ILogger<FunctionFhirPathTestR4B> _logger;
 
-		private static ModelInspector _inspectorR4B = ModelInspector.ForAssembly(typeof(r4b.Hl7.Fhir.Model.Patient).Assembly);
-		List<string> _supportedResourcesR4B = r4b.Hl7.Fhir.Model.ModelInfo.SupportedResources;
-		Type[] _openTypesR4B = r4b.Hl7.Fhir.Model.ModelInfo.OpenTypes;
+        private static ModelInspector _inspectorR4B = ModelInspector.ForAssembly(typeof(r4b.Hl7.Fhir.Model.Patient).Assembly);
+        List<string> _supportedResourcesR4B = r4b.Hl7.Fhir.Model.ModelInfo.SupportedResources;
+        Type[] _openTypesR4B = r4b.Hl7.Fhir.Model.ModelInfo.OpenTypes;
 
-		private static ModelInspector _inspectorR5 = ModelInspector.ForAssembly(typeof(r5.Hl7.Fhir.Model.Patient).Assembly);
-		List<string> _supportedResourcesR5 = r5.Hl7.Fhir.Model.ModelInfo.SupportedResources;
-		Type[] _openTypesR5 = r5.Hl7.Fhir.Model.ModelInfo.OpenTypes;
+        private static ModelInspector _inspectorR5 = ModelInspector.ForAssembly(typeof(r5.Hl7.Fhir.Model.Patient).Assembly);
+        List<string> _supportedResourcesR5 = r5.Hl7.Fhir.Model.ModelInfo.SupportedResources;
+        Type[] _openTypesR5 = r5.Hl7.Fhir.Model.ModelInfo.OpenTypes;
 
-		[Function("FHIRPathTester-CapabilityStatement")]
+        [Function("FHIRPathTester-CapabilityStatement")]
         public async Task<IActionResult> RunCapabilityStatement(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "metadata")] HttpRequest req)
         {
@@ -61,7 +62,10 @@ namespace FhirPathLab_DotNetEngine
             // and this function app is only configured to be accessible from the fhirpath-lab app.
             string downloadExampleUrl = req.Query["url"].FirstOrDefault();
 
-            if (!downloadExampleUrl.StartsWith("https://hl7.org/fhir/")
+            if (string.IsNullOrEmpty(downloadExampleUrl))
+                return new BadRequestObjectResult("Missing URL");
+
+            if (!downloadExampleUrl.StartsWith("https://hl7.org/fhir")
                 && !downloadExampleUrl.StartsWith("https://build.fhir.org/"))
                 return new BadRequestObjectResult("Unsupported URL");
 
@@ -73,6 +77,7 @@ namespace FhirPathLab_DotNetEngine
                 downloadExampleUrl = downloadExampleUrl.Replace(".json.html", ".json");
 
             HttpClient client = new HttpClient();
+            client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("FhirPathLabDownloadAssistant", "0.1.0"));
             var result = await client.GetAsync(downloadExampleUrl);
             string data = await result.Content.ReadAsStringAsync();
 
@@ -88,11 +93,11 @@ namespace FhirPathLab_DotNetEngine
         {
             _logger?.LogInformation("FhirPath Expression dotnet Evaluation");
 
-			var engine = new FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester(_inspectorR4B, _supportedResourcesR4B, _openTypesR4B);
-			engine.CreateFhirClient = (url, settings, messageHandler) => { return new r4b.Hl7.Fhir.Rest.FhirClient(url, settings, messageHandler); };
-			engine._xmlParser = new r4b.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
-			engine._jsonParser = new r4b.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
-			
+            var engine = new FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester(_inspectorR4B, _supportedResourcesR4B, _openTypesR4B);
+            engine.CreateFhirClient = (url, settings, messageHandler) => { return new r4b.Hl7.Fhir.Rest.FhirClient(url, settings, messageHandler); };
+            engine._xmlParser = new r4b.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
+            engine._jsonParser = new r4b.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
+            
             var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.10.0 (R4B)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
@@ -108,11 +113,11 @@ namespace FhirPathLab_DotNetEngine
         {
             _logger?.LogInformation("FhirPath Expression dotnet Evaluation");
 
-			var engine = new FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester(_inspectorR5, _supportedResourcesR5, _openTypesR5);
-			engine.CreateFhirClient = (url, settings, messageHandler) => { return new r5.Hl7.Fhir.Rest.FhirClient(url, settings, messageHandler); };
-			engine._xmlParser = new r5.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
-			engine._jsonParser = new r5.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
-			
+            var engine = new FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester(_inspectorR5, _supportedResourcesR5, _openTypesR5);
+            engine.CreateFhirClient = (url, settings, messageHandler) => { return new r5.Hl7.Fhir.Rest.FhirClient(url, settings, messageHandler); };
+            engine._xmlParser = new r5.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
+            engine._jsonParser = new r5.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
+            
             var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.10.0 (R5)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
