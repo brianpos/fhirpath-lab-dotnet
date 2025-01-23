@@ -8,5 +8,9 @@ This project implements the dotnet engine in the Firely SDK.
 Issues will be managed through the fhirpath-lab project, and not this specific repo's issue list.
 
 ## New Features Added:
+
+### 23 January 2025
+* Update to the Firely SDK 5.11.1
+
 ### 5 July 2023
 * Variable Support added to the expression validator
