@@ -9,6 +9,9 @@ Issues will be managed through the fhirpath-lab project, and not this specific r
 
 ## New Features Added:
 
+### 11 February 2025
+* Update to the Firely SDK 5.11.3
+
 ### 23 January 2025
 * Update to the Firely SDK 5.11.1
 

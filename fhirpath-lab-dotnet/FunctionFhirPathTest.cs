@@ -98,7 +98,7 @@ namespace FhirPathLab_DotNetEngine
             engine._xmlParser = new r4b.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
             engine._jsonParser = new r4b.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
             
-            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.11.1 (R4B)");
+            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.11.3 (R4B)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
@@ -118,7 +118,7 @@ namespace FhirPathLab_DotNetEngine
             engine._xmlParser = new r5.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
             engine._jsonParser = new r5.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
             
-            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.11.1 (R5)");
+            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.11.3 (R5)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
