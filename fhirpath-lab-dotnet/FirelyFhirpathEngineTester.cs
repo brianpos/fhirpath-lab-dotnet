@@ -470,7 +470,10 @@ namespace FhirPathLab_DotNetEngine
                         if (((ctExpr.Value as ScopedNode)?.Current as IFhirValueProvider)?.FhirValue != null)
                         {
                             var res = xps(ctExpr.Value, evalContext);
-                            outputValues = res.ToList();
+                            if (res.Any())
+                                outputValues = res.ToList();
+                            else
+                                outputValues = ElementNode.EmptyList;
                         }
                         else
                         {
@@ -538,6 +541,12 @@ namespace FhirPathLab_DotNetEngine
                                 var item = new[] { rawItem }.ToFhirValues().FirstOrDefault();
                                 var resultPart = new Parameters.ParameterComponent() { Name = item?.TypeName ?? "(null)" };
                                 partContext.Part.Add(resultPart);
+                                // read the path from the rawItem using the ISHortPathGenerator
+                                if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                {
+                                    if (spg?.ShortPath != null)
+                                        resultPart.SetStringExtension("http://fhir.forms-lab.com/StructureDefinition/resource-path", spg.ShortPath);
+                                }
 
                                 if (item is DataType dt)
                                 {
