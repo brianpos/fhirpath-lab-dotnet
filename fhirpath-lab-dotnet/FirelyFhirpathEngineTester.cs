@@ -24,6 +24,7 @@ using System.Reflection;
 using Hl7.Fhir.Specification.Terminology;
 using System.Net.Http;
 using System.Threading;
+using P = Hl7.Fhir.ElementModel.Types;
 
 namespace FhirPathLab_DotNetEngine
 {
@@ -208,6 +209,31 @@ namespace FhirPathLab_DotNetEngine
             }
         }
 
+        public static Base ToFhirValue(ITypedElement r)
+        {
+            if (r is null)
+                return null;
+
+            var fhirValue = r.Annotation<IFhirValueProvider>();
+            if (fhirValue != null)
+            {
+                return fhirValue.FhirValue;
+            }
+
+            return r.Value switch
+            {
+                bool b => new FhirBoolean(b),
+                long l => new Integer64(l),
+                int i => new Integer(i),
+                decimal dec => new FhirDecimal(dec),
+                string s => new FhirString(s),
+                P.Date d => new Date(d.ToString()),
+                P.Time t => new Time(t.ToString()),
+                P.DateTime dt => new FhirDateTime(dt.ToDateTimeOffset(TimeSpan.Zero)),
+                var other => (Base)other
+            };
+        }
+        
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
         public Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression)
         {
@@ -538,10 +564,10 @@ namespace FhirPathLab_DotNetEngine
                         {
                             foreach (var rawItem in outputValues)
                             {
-                                var item = new[] { rawItem }.ToFhirValues().FirstOrDefault();
+                                var item = ToFhirValue(rawItem);
                                 var resultPart = new Parameters.ParameterComponent() { Name = item?.TypeName ?? "(null)" };
                                 partContext.Part.Add(resultPart);
-                                // read the path from the rawItem using the ISHortPathGenerator
+                                // read the path from the rawItem using the IShortPathGenerator
                                 if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
                                 {
                                     if (spg?.ShortPath != null)
@@ -580,10 +606,19 @@ namespace FhirPathLab_DotNetEngine
                                 var traceParam = new Parameters.ParameterComponent() { Name = "trace", Value = new FhirString(ti.Key) };
                                 partContext.Part.Add(traceParam);
 
-                                foreach (var val in ti.Value.ToFhirValues())
+                                foreach (var rawItem in ti.Value)
                                 {
+                                    if (rawItem == null) continue;
+                                    Base val = ToFhirValue(rawItem);
                                     var part = new Parameters.ParameterComponent() { Name = val.TypeName };
                                     traceParam.Part.Add(part);
+                                    // read the path from the rawItem using the IShortPathGenerator
+                                    if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                    {
+                                        if (spg?.ShortPath != null)
+                                            part.SetStringExtension("http://fhir.forms-lab.com/StructureDefinition/resource-path", spg.ShortPath);
+                                    }
+
                                     if (val is DataType dt)
                                     {
                                         if (val is FhirString str && str.Value == "")
