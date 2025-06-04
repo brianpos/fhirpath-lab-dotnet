@@ -310,6 +310,14 @@ namespace FhirPathLab_DotNetEngine
             symbolTable.Add("lookup", (ITypedElement a, ITypedElement b) => te.Lookup(a, b));
             symbolTable.Add("lookup", (ITypedElement a) => te.Lookup(a));
 
+            // inject the custom debug tracing
+            List<KeyValuePair<string, IEnumerable<ITypedElement>>> debugTraceList = new List<KeyValuePair<string, IEnumerable<ITypedElement>>>();
+
+            symbolTable.Add("debugTrace", (IEnumerable<ITypedElement> values, string name, EvaluationContext c) => {
+                debugTraceList.Add(new KeyValuePair<string, IEnumerable<ITypedElement>>(name, values.ToList()));
+                return values; 
+            });
+
             // Add variables from the operation parameters
             if (pcVariables?.Part != null)
             {
@@ -405,12 +413,14 @@ namespace FhirPathLab_DotNetEngine
             var compiler = new FhirPathCompiler(symbolTable);
             try
             {
+                Expression parsedExpression = compiler.Parse(expression);
+                var visitor = new DebugTraceExpressionVisitor();
+                var taggedExpr = parsedExpression.Accept(visitor);
                 if (bValidateExpression)
                 {
-                    ValidateFhirPathExpressions(resource?.TypeName ?? "Patient", context, expression, visitorContext, validator, configParameters, outcome, compiler);
+                    ValidateFhirPathExpressions(resource?.TypeName ?? "Patient", context, parsedExpression, visitorContext, validator, configParameters, outcome, compiler);
                 }
-
-                xps = compiler.Compile(expression);
+                xps = compiler.Compile(taggedExpr);
             }
             catch (Exception ex)
             {
@@ -560,6 +570,13 @@ namespace FhirPathLab_DotNetEngine
                             partContext.Value = new FhirString(ctExpr.Key);
                         result.Parameter.Add(partContext);
 
+                        // Debug Trace context
+                        var partDebugContext = new Parameters.ParameterComponent();
+                        partDebugContext.Name = "debug-trace";
+                        if (!string.IsNullOrEmpty(ctExpr.Key))
+                            partDebugContext.Value = new FhirString(ctExpr.Key);
+                        result.Parameter.Add(partDebugContext);
+
                         if (outputValues.Any())
                         {
                             foreach (var rawItem in outputValues)
@@ -636,6 +653,49 @@ namespace FhirPathLab_DotNetEngine
                             }
                             traceList.Clear();
                         }
+
+                        // Append Debug Trace Results
+                        if (debugTraceList.Any())
+                        {
+                            foreach (var ti in debugTraceList)
+                            {
+                                var traceParam = new Parameters.ParameterComponent() { Name = ti.Key };
+                                partDebugContext.Part.Add(traceParam);
+
+                                foreach (var rawItem in ti.Value)
+                                {
+                                    if (rawItem == null) continue;
+                                    Base val = ToFhirValue(rawItem);
+                                    var part = new Parameters.ParameterComponent() { Name = val.TypeName };
+                                    traceParam.Part.Add(part);
+                                    // read the path from the rawItem using the IShortPathGenerator
+                                    if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                    {
+                                        if (spg?.ShortPath != null)
+                                        {
+                                            part.Name = "resource-path";
+                                            part.Value = new FhirString(spg.ShortPath);
+                                            continue;
+                                        }
+                                    }
+
+                                    if (val is DataType dt)
+                                    {
+                                        if (val is FhirString str && str.Value == "")
+                                            part.Name = "empty-string";
+                                        else
+                                            part.Value = dt;
+                                    }
+                                    else if (val is Resource fr)
+                                        part.Resource = fr;
+                                    else
+                                    {
+                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
+                                    }
+                                }
+                            }
+                            debugTraceList.Clear();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -649,7 +709,7 @@ namespace FhirPathLab_DotNetEngine
             return result;
         }
 
-        private void ValidateFhirPathExpressions(string resourceType, string context, string expression, JsonExpressionTreeVisitor visitorContext, JsonExpressionTreeVisitor validator, Parameters.ParameterComponent configParameters, OperationOutcome outcome, FhirPathCompiler compiler)
+        private void ValidateFhirPathExpressions(string resourceType, string context, Expression expression, JsonExpressionTreeVisitor visitorContext, JsonExpressionTreeVisitor validator, Parameters.ParameterComponent configParameters, OperationOutcome outcome, FhirPathCompiler compiler)
         {
             var typeResource = _inspector.GetTypeForFhirType(resourceType);
             validator.RegisterVariable("resource", typeResource);
@@ -675,8 +735,7 @@ namespace FhirPathLab_DotNetEngine
             }
 
             // Validate the Expression itself
-            var ce = compiler.Parse(expression);
-            var rv = ce.Accept(validator);
+            var rv = expression.Accept(validator);
             if (validator.Outcome.Issue.Any())
                 outcome.Issue.AddRange(validator.Outcome.Issue);
             configParameters.Part.Insert(1, new Parameters.ParameterComponent() { Name = "expectedReturnType", Value = new FhirString(rv.ToString()) });
