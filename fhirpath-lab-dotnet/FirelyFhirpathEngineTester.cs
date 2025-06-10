@@ -122,6 +122,7 @@ namespace FhirPathLab_DotNetEngine
             Resource resource = operationParameters.GetResource("resource");
             string resourceId = operationParameters.GetString("resource");
             bool bValidateExpression = operationParameters.GetSingleValue<FhirBoolean>("validate")?.Value ?? false;
+            bool bEnableDebugTrace = operationParameters.GetSingleValue<FhirBoolean>("debug_trace")?.Value ?? false;
             string terminologyServerUrl = operationParameters.GetString("terminologyserver");
             if (resource == null && !string.IsNullOrEmpty(resourceId))
             {
@@ -149,7 +150,7 @@ namespace FhirPathLab_DotNetEngine
                 }
             }
 
-            var resultResource = EvaluateFhirPathTesterExpression(resourceId, resource, operationParameters.GetString("context"), operationParameters.GetString("expression"), terminologyServerUrl, operationParameters.Parameter.FirstOrDefault(p => p.Name == "variables"), firelyVersion, bValidateExpression);
+            var resultResource = EvaluateFhirPathTesterExpression(resourceId, resource, operationParameters.GetString("context"), operationParameters.GetString("expression"), terminologyServerUrl, operationParameters.Parameter.FirstOrDefault(p => p.Name == "variables"), firelyVersion, bValidateExpression, bEnableDebugTrace);
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
             return resultResource;
         }
@@ -233,9 +234,17 @@ namespace FhirPathLab_DotNetEngine
                 var other => (Base)other
             };
         }
-        
+
+        class DebugTraceNode
+        {
+            public string NodeLocation { get; set; }
+            public IEnumerable<ITypedElement> This { get; set; }
+            public int? Index { get; set; }
+            public IEnumerable<ITypedElement> Results { get; set; }
+        }
+
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
-        public Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression)
+        public Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression, bool bEnableDebugTrace)
         {
             var visitorContext = new JsonExpressionTreeVisitor(_inspector,
                 _supportedResources, _openTypes);
@@ -311,10 +320,22 @@ namespace FhirPathLab_DotNetEngine
             symbolTable.Add("lookup", (ITypedElement a) => te.Lookup(a));
 
             // inject the custom debug tracing
-            List<KeyValuePair<string, IEnumerable<ITypedElement>>> debugTraceList = new List<KeyValuePair<string, IEnumerable<ITypedElement>>>();
+            List<DebugTraceNode> debugTraceList = new List<DebugTraceNode>();
 
-            symbolTable.Add("debugTrace", (IEnumerable<ITypedElement> values, string name, EvaluationContext c) => {
-                debugTraceList.Add(new KeyValuePair<string, IEnumerable<ITypedElement>>(name, values.ToList()));
+            symbolTable.Add("debugTrace", (IEnumerable<ITypedElement> values, string name, IEnumerable<ITypedElement> thisValues, IEnumerable<ITypedElement> index) => {
+                // Also grab the $this and $focus values.
+                var traceData = new DebugTraceNode()
+                {
+                    NodeLocation = name,
+                    This = thisValues.ToList(),
+                    Results = values.ToList()
+                };
+                var indexValue = index.FirstOrDefault();
+                if (indexValue != null && indexValue.InstanceType == "System.Integer")
+                {
+                    traceData.Index = (int)indexValue.Value;
+                }
+                debugTraceList.Add(traceData);
                 return values; 
             });
 
@@ -420,7 +441,10 @@ namespace FhirPathLab_DotNetEngine
                 {
                     ValidateFhirPathExpressions(resource?.TypeName ?? "Patient", context, parsedExpression, visitorContext, validator, configParameters, outcome, compiler);
                 }
-                xps = compiler.Compile(taggedExpr);
+                if (bEnableDebugTrace)
+                    xps = compiler.Compile(taggedExpr);
+                else
+                    xps = compiler.Compile(parsedExpression);
             }
             catch (Exception ex)
             {
@@ -575,7 +599,8 @@ namespace FhirPathLab_DotNetEngine
                         partDebugContext.Name = "debug-trace";
                         if (!string.IsNullOrEmpty(ctExpr.Key))
                             partDebugContext.Value = new FhirString(ctExpr.Key);
-                        result.Parameter.Add(partDebugContext);
+                        if (debugTraceList.Any())
+                            result.Parameter.Add(partDebugContext);
 
                         if (outputValues.Any())
                         {
@@ -659,10 +684,10 @@ namespace FhirPathLab_DotNetEngine
                         {
                             foreach (var ti in debugTraceList)
                             {
-                                var traceParam = new Parameters.ParameterComponent() { Name = ti.Key };
+                                var traceParam = new Parameters.ParameterComponent() { Name = ti.NodeLocation };
                                 partDebugContext.Part.Add(traceParam);
 
-                                foreach (var rawItem in ti.Value)
+                                foreach (var rawItem in ti.Results)
                                 {
                                     if (rawItem == null) continue;
                                     Base val = ToFhirValue(rawItem);
@@ -692,6 +717,46 @@ namespace FhirPathLab_DotNetEngine
                                     {
                                         part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
                                     }
+                                }
+
+                                // Also put in the THIS handling
+                                foreach (var rawItem in ti.This)
+                                {
+                                    if (rawItem == null) continue;
+                                    Base val = ToFhirValue(rawItem);
+                                    var part = new Parameters.ParameterComponent() { Name = "this-"+val.TypeName };
+                                    traceParam.Part.Add(part);
+                                    // read the path from the rawItem using the IShortPathGenerator
+                                    if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                    {
+                                        if (spg?.ShortPath != null)
+                                        {
+                                            part.Name = "this-resource-path";
+                                            part.Value = new FhirString(spg.ShortPath);
+                                            continue;
+                                        }
+                                    }
+
+                                    if (val is DataType dt)
+                                    {
+                                        if (val is FhirString str && str.Value == "")
+                                            part.Name = "this-empty-string";
+                                        else
+                                            part.Value = dt;
+                                    }
+                                    else if (val is Resource fr)
+                                        part.Resource = fr;
+                                    else
+                                    {
+                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
+                                    }
+                                }
+
+                                // and the index
+                                if (ti.Index.HasValue)
+                                {
+                                    var part = new Parameters.ParameterComponent() { Name = "index", Value = new Hl7.Fhir.Model.Integer(ti.Index.Value) };
+                                    traceParam.Part.Add(part);
                                 }
                             }
                             debugTraceList.Clear();

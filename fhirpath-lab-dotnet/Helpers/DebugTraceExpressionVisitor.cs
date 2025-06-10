@@ -20,17 +20,19 @@ namespace FhirPathLab_DotNetEngine
 		{
 			// constants don't need cloning, as they are immutable
 			// and have no arguments or children
-			return WrapWithDebugTrace(expression);
+			return WrapWithDebugTrace(expression, "constant");
 		}
 
 		public override Expression VisitFunctionCall(FunctionCallExpression expression)
 		{
 			FunctionCallExpression newCall;
+			string name;
 			// Create the correct derived types
 			switch (expression)
 			{
 				case ChildExpression ce:
 					var focusChild = expression.Focus.Accept(this); // clone the focus expression
+					name = ce.ChildName;
 					newCall = new ChildExpression(
 						focusChild,
 						ce.ChildName,
@@ -38,6 +40,7 @@ namespace FhirPathLab_DotNetEngine
 					break;
 				case IndexerExpression ie:
 					var focusIndex = expression.Focus.Accept(this); // clone the focus expression
+					name = "[]";
 					newCall = new IndexerExpression(
 						focusIndex,
 						ie.Index.Accept(this),
@@ -46,6 +49,7 @@ namespace FhirPathLab_DotNetEngine
 						expression.Location);
 					break;
 				case BinaryExpression be:
+					name = expression.FunctionName.Replace("binary.","");
 					newCall = new BinaryExpression(
 						be.OpToken,
 						be.Arguments.First().Accept(this),
@@ -54,11 +58,13 @@ namespace FhirPathLab_DotNetEngine
 						);
 					break;
 				case UnaryExpression ue:
+					name = ue.Op;
 					newCall = new UnaryExpression(
 						ue.Op, ue.Operand.Accept(this), ue.Location);
 					break;
 				default:
 					var focus = expression.Focus.Accept(this); // clone the focus expression
+					name = expression.FunctionName;
 					var newArgs = expression.Arguments.Select(arg => arg.Accept(this)).ToList(); // clone each argument expression
 					newCall = new FunctionCallExpression(
 						focus,
@@ -75,15 +81,15 @@ namespace FhirPathLab_DotNetEngine
 			if (newCall.FunctionName == "trace")
 				return newCall; // return the newly created function call
 
-			return WrapWithDebugTrace(newCall);
+			return WrapWithDebugTrace(newCall, name);
 		}
 
-		private static Expression WrapWithDebugTrace(Expression expression)
+		private static Expression WrapWithDebugTrace(Expression expression, string name)
 		{
 			string location = $"{expression.Location.LineNumber}.{expression.Location.LinePosition}";
 			if (expression.Location is FhirPathExpressionLocationInfo loc)
 			{
-				location = $"{loc.RawPosition},{loc.Length}";
+				location = $"{loc.RawPosition},{loc.Length},{name}";
 			}
 			// Wrap into a trace function call
 			var traceCall = new FunctionCallExpression(
@@ -92,7 +98,9 @@ namespace FhirPathLab_DotNetEngine
 				new SubToken('('),
 				new SubToken(')'),
 				expression.ExpressionType,
-				new ConstantExpression(location)
+				new ConstantExpression(location),
+				AxisExpression.This,
+				AxisExpression.Index
 				);
 
 			return traceCall; // return the newly created function call
@@ -111,7 +119,7 @@ namespace FhirPathLab_DotNetEngine
 			// and have no arguments or children
 			if (expression is AxisExpression)
 				return expression;
-			return WrapWithDebugTrace(expression);
+			return WrapWithDebugTrace(expression, expression.Name);
 		}
 
 		public override Expression VisitCustomExpression(CustomExpression expression)
