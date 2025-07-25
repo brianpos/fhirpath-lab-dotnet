@@ -86,7 +86,7 @@ namespace FhirPathLab_DotNetEngine
 
 		private static Expression WrapWithDebugTrace(Expression expression, string name)
 		{
-			string location = $"{expression.Location.LineNumber}.{expression.Location.LinePosition}";
+			string location = "";
 			if (expression.Location is FhirPathExpressionLocationInfo loc)
 			{
 				location = $"{loc.RawPosition},{loc.Length},{name}";

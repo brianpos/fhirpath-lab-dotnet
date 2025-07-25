@@ -26,6 +26,7 @@ using System.Net.Http;
 using System.Threading;
 using P = Hl7.Fhir.ElementModel.Types;
 
+#pragma warning disable SDK0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 namespace FhirPathLab_DotNetEngine
 {
     public class FirelyFhirpathEngineTester
