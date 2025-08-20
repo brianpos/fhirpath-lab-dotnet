@@ -85,6 +85,7 @@ namespace FhirPathLab_DotNetEngine
             log.LogInformation("FhirPath Expression dotnet Evaluation");
 
             Parameters operationParameters = new Parameters();
+            OperationOutcome parseIssues = null;
             if (req.Method != "POST")
             {
                 // read the parameters from the request query string
@@ -112,6 +113,7 @@ namespace FhirPathLab_DotNetEngine
                     }
                     catch (DeserializationFailedException exception)
                     {
+                        parseIssues = exception.ToOperationOutcome();
                         if (exception.PartialResult is Parameters p)
                             operationParameters = p;
                         else
@@ -151,7 +153,7 @@ namespace FhirPathLab_DotNetEngine
                 }
             }
 
-            var resultResource = EvaluateFhirPathTesterExpression(resourceId, resource, operationParameters.GetString("context"), operationParameters.GetString("expression"), terminologyServerUrl, operationParameters.Parameter.FirstOrDefault(p => p.Name == "variables"), firelyVersion, bValidateExpression, bEnableDebugTrace);
+            var resultResource = EvaluateFhirPathTesterExpression(resourceId, resource, operationParameters.GetString("context"), operationParameters.GetString("expression"), terminologyServerUrl, operationParameters.Parameter.FirstOrDefault(p => p.Name == "variables"), firelyVersion, bValidateExpression, bEnableDebugTrace, parseIssues);
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
             return resultResource;
         }
@@ -245,7 +247,7 @@ namespace FhirPathLab_DotNetEngine
         }
 
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
-        public Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression, bool bEnableDebugTrace)
+        public Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression, bool bEnableDebugTrace, OperationOutcome parseIssues)
         {
             var visitorContext = new JsonExpressionTreeVisitor(_inspector,
                 _supportedResources, _openTypes);
@@ -275,6 +277,11 @@ namespace FhirPathLab_DotNetEngine
             // op outcome just in case we get really bad issues
             OperationOutcome outcome = new OperationOutcome();
             outcome.SetAnnotation(HttpStatusCode.BadRequest);
+			if (parseIssues != null)
+			{
+				configParameters.Part.Insert(3, new Parameters.ParameterComponent() { Name = "debugOutcome", Resource = parseIssues });
+				outcome.Issue.AddRange(parseIssues.Issue);
+			}
             // outcome.SetAnnotation(new AnnotationSourceResource() { ValidatingResource = result });
 
             ScopedNode inputNav;
