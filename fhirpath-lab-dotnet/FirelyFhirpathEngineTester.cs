@@ -122,7 +122,7 @@ namespace FhirPathLab_DotNetEngine
                 }
             }
 
-            Resource resource = operationParameters.GetResource("resource");
+            Resource resource = operationParameters.GetResource(_inspector, "resource", ref parseIssues);
             string resourceId = operationParameters.GetString("resource");
             bool bValidateExpression = operationParameters.GetSingleValue<FhirBoolean>("validate")?.Value ?? false;
             bool bEnableDebugTrace = operationParameters.GetSingleValue<FhirBoolean>("debug_trace")?.Value ?? false;

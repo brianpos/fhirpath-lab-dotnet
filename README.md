@@ -9,6 +9,9 @@ Issues will be managed through the fhirpath-lab project, and not this specific r
 
 ## New Features Added:
 
+### 29 August 2025
+* Handle XML or JSON embedded content (as alternative to parameters.part.resource - supports wrong model and also cross typing xml wrapped in json)
+
 ### 28 August 2025
 * Update to the Firely SDK 5.12.2
 * Update FhirPath Validator

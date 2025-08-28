@@ -1,12 +1,13 @@
 ﻿using Hl7.Fhir.ElementModel;
-using Hl7.Fhir.FhirPath;
 using Hl7.Fhir.Model;
+using Hl7.Fhir.Serialization;
 using Hl7.FhirPath.Expressions;
 using Hl7.FhirPath;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace FhirPathLab_DotNetEngine
@@ -25,12 +26,90 @@ namespace FhirPathLab_DotNetEngine
             return null;
         }
 
-        public static Resource GetResource(this Parameters me, string name)
+        const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
+        const string exturlXmlValue = "http://fhir.forms-lab.com/StructureDefinition/xml-value";
+
+        public static Resource GetResource(this Parameters me, Hl7.Fhir.Introspection.ModelInspector inspector, string name, ref OperationOutcome parseIssues)
         {
             var value = me.Parameter.Where(s => s.Name == name).FirstOrDefault();
             if (value == null)
                 return null;
-            return value.Resource;
+            if (value.Resource != null)
+                return value.Resource;
+
+            // check if this is in a JSON or XML extension value that needs to be unpacked
+            var xmlRawText = value.GetStringExtension(exturlXmlValue);
+            if (!String.IsNullOrEmpty(xmlRawText))
+            {
+                var settings = new FhirXmlPocoDeserializerSettings()
+                {
+                    AnnotateResourceParseExceptions = true,
+                    ValidateOnFailedParse = true,
+                    // Validator = null, // Since we can handle multiple issues, let this through
+                };
+                var ds = new BaseFhirXmlPocoDeserializer(inspector, settings);
+                try
+                {
+                    return ds.DeserializeResource(xmlRawText) as Resource;
+                }
+                catch (DeserializationFailedException exception)
+                {
+                    if (parseIssues == null) 
+                        parseIssues = new OperationOutcome();
+                    parseIssues.Issue.AddRange(exception.ToOperationOutcome().Issue);
+                    if (exception.PartialResult is Resource r)
+                        return r;
+                }
+				catch (System.Xml.XmlException xmlException)
+				{
+					if (parseIssues == null)
+						parseIssues = new OperationOutcome();
+					parseIssues.Issue.Add(new OperationOutcome.IssueComponent()
+					{
+						Severity = OperationOutcome.IssueSeverity.Error,
+						Code = OperationOutcome.IssueType.Invalid,
+						Details = new CodeableConcept() { Text = "Invalid XML test resource" },
+						Diagnostics = xmlException.Message
+					});
+				}
+			}
+            var jsonRawText = value.GetStringExtension(exturlJsonValue);
+            if (!String.IsNullOrEmpty(jsonRawText))
+            {
+                var settings = new FhirJsonPocoDeserializerSettings()
+                {
+                    AnnotateResourceParseExceptions = true,
+                    ValidateOnFailedParse = true,
+                    // Validator = null, // Since we can handle multiple issues, let this through
+                };
+                var ds = new BaseFhirJsonPocoDeserializer(inspector, settings);
+                try
+                {
+                    return ds.DeserializeResource(jsonRawText) as Resource;
+                }
+                catch (DeserializationFailedException exception)
+                {
+                    if (parseIssues == null) 
+                        parseIssues = new OperationOutcome();
+                    parseIssues.Issue.AddRange(exception.ToOperationOutcome().Issue);
+                    if (exception.PartialResult is Resource r)
+                        return r;
+                }
+				catch (System.Xml.XmlException xmlException)
+				{
+					if (parseIssues == null)
+						parseIssues = new OperationOutcome();
+					parseIssues.Issue.Add(new OperationOutcome.IssueComponent()
+					{
+						Severity = OperationOutcome.IssueSeverity.Error,
+						Code = OperationOutcome.IssueType.Invalid,
+						Details = new CodeableConcept() { Text = "Invalid JSON test resource" },
+						Diagnostics = xmlException.Message
+					});
+				}
+			}
+
+			return null;
         }
 
         public static Uri RequestUri(this HttpRequest request)
