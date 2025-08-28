@@ -1,5 +1,6 @@
 extern alias r4b;
 extern alias r5;
+extern alias r6;
 
 using System;
 using System.Net;
@@ -35,7 +36,11 @@ namespace FhirPathLab_DotNetEngine
         List<string> _supportedResourcesR5 = r5.Hl7.Fhir.Model.ModelInfo.SupportedResources;
         Type[] _openTypesR5 = r5.Hl7.Fhir.Model.ModelInfo.OpenTypes;
 
-        [Function("FHIRPathTester-CapabilityStatement")]
+		private static ModelInspector _inspectorR6 = ModelInspector.ForAssembly(typeof(r6.Hl7.Fhir.Model.Patient).Assembly);
+		List<string> _supportedResourcesR6 = r6.Hl7.Fhir.Model.ModelInfo.SupportedResources;
+		Type[] _openTypesR6 = r6.Hl7.Fhir.Model.ModelInfo.OpenTypes;
+
+		[Function("FHIRPathTester-CapabilityStatement")]
         public async Task<IActionResult> RunCapabilityStatement(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "metadata")] HttpRequest req)
         {
@@ -118,7 +123,7 @@ namespace FhirPathLab_DotNetEngine
             engine._xmlParser = new r5.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
             engine._jsonParser = new r5.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
             
-            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.12.1 (R5)");
+            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.12.2 (R5)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
@@ -127,9 +132,28 @@ namespace FhirPathLab_DotNetEngine
             return result;
         }
 
-        // To keep the Azure function "warm" trigger it every 15 minutes
-        // https://mikhail.io/serverless/coldstarts/azure/
-        [Function("Warmer")]
+		[Function("FHIRPathTesterR6")]
+		public async Task<IActionResult> RunFhirPathTestR6(
+			[HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath-r6")] HttpRequest req)
+		{
+			_logger?.LogInformation("FhirPath Expression dotnet Evaluation");
+
+			var engine = new FhirPathLab_DotNetEngine.FirelyFhirpathEngineTester(_inspectorR6, _supportedResourcesR6, _openTypesR6);
+			engine.CreateFhirClient = (url, settings, messageHandler) => { return new r6.Hl7.Fhir.Rest.FhirClient(url, settings, messageHandler); };
+			engine._xmlParser = new r5.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
+			engine._jsonParser = new r5.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
+
+			var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.12.2 (R6)");
+			resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
+
+			var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
+			result.ContentTypes.Add(new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/fhir+json"));
+			result.Formatters.Add(new JsonFhirOutputFormatter2(_inspectorR5));
+			return result;
+		}
+		// To keep the Azure function "warm" trigger it every 15 minutes
+		// https://mikhail.io/serverless/coldstarts/azure/
+		[Function("Warmer")]
         public static void WarmUp([TimerTrigger("0 */15 * * * *")] TimerInfo timer)
         {
             // Do nothing
