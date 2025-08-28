@@ -9,6 +9,11 @@ Issues will be managed through the fhirpath-lab project, and not this specific r
 
 ## New Features Added:
 
+### 28 August 2025
+* Update to the Firely SDK 5.12.2
+* Update FhirPath Validator
+* Add support for debug tracer introdiced in Firely SDK 5.12.2
+
 ### 25 July 2025
 * Update to the Firely SDK 5.12.1
 

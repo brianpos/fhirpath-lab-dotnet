@@ -1,4 +1,3 @@
-
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -15,13 +14,14 @@ using System.Collections.Generic;
 using System.Linq;
 using Hl7.Fhir.Rest;
 using Hl7.Fhir.Specification.Source;
-using System.Text;
 using Hl7.Fhir.Introspection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Collections;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using Hl7.Fhir.Specification.Terminology;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using P = Hl7.Fhir.ElementModel.Types;
@@ -243,8 +243,116 @@ namespace FhirPathLab_DotNetEngine
         {
             public string NodeLocation { get; set; }
             public IEnumerable<ITypedElement> This { get; set; }
+            public IEnumerable<ITypedElement> Focus { get; set; }
             public int? Index { get; set; }
             public IEnumerable<ITypedElement> Results { get; set; }
+        }
+
+        private class TestDebugTracer : IDebugTracer
+        {
+            public List<string> traceOutput = new List<string>();
+            private List<ExceptionDispatchInfo> exceptions = new List<ExceptionDispatchInfo>();
+
+            public void Assert()
+            {
+                if (exceptions.Count == 0)
+                    return; // no exceptions to throw
+                System.Diagnostics.Trace.WriteLine($"Tracer exceptions: {exceptions.Count}");
+                foreach (var item in exceptions)
+                {
+                    item.Throw();
+                }
+            }
+
+
+            public void TraceCall(
+                Expression expr,
+                int contextId,
+                IEnumerable<ITypedElement> focus,
+                IEnumerable<ITypedElement> thisValue,
+                ITypedElement index,
+                IEnumerable<ITypedElement> totalValue,
+                IEnumerable<ITypedElement> result,
+                IEnumerable<KeyValuePair<string, IEnumerable<ITypedElement>>> variables)
+            {
+                // DiagnosticsDebugTracer.DebugTraceCall(expr, contextId, focus, thisValue, index, totalValue, result, variables);
+
+                var exprName = TraceExpressionNodeName(expr);
+                if (exprName == null)
+                    return; // this is a node that we aren't interested in tracing (Identifier and $that)
+                var pi = expr.Location as FhirPathExpressionLocationInfo;
+                string output = $"{pi.RawPosition},{pi.Length},{exprName}:" +
+                                $" focus={focus?.Count() ?? 0} result={result?.Count() ?? 0}";
+                traceOutput.Add(output);
+                if (TraceNode != null)
+                {
+                    try
+                    {
+                        TraceNode(traceOutput.Count - 1, expr, contextId,
+                            focus, thisValue, index, totalValue, result);
+                    }
+                    catch (Exception e)
+                    {
+                        // swallow the exception while tracing during testing, then after evaluation
+                        // is complete, we can throw them.
+                        exceptions.Add(ExceptionDispatchInfo.Capture(e));
+                    }
+                }
+            }
+
+            public delegate void TraceNodeDelegate(int n, Expression expr, int contextId,
+                IEnumerable<ITypedElement> focus,
+                IEnumerable<ITypedElement> thisValue,
+                ITypedElement index,
+                IEnumerable<ITypedElement> totalValue,
+                IEnumerable<ITypedElement> result);
+            public TraceNodeDelegate TraceNode { get; set; } = null;
+
+            public string TraceExpressionNodeName(Expression expr)
+            {
+                switch (expr)
+                {
+                    case IdentifierExpression _:
+                        return null; // we don't trace IdentifierExpressions, they are just names
+                    case ConstantExpression ce:
+                        return "constant";
+                    case ChildExpression child:
+                        return child.ChildName;
+                    case IndexerExpression indexer:
+                        return "[]";
+                    case UnaryExpression ue:
+                        return ue.Op;
+                    case BinaryExpression be:
+                        return be.Op;
+                    case FunctionCallExpression fe:
+                        return fe.FunctionName;
+                    case NewNodeListInitExpression:
+                        return "{}";
+                    case AxisExpression ae:
+                        {
+                            if (ae.AxisName == "that" || ae.AxisName == "this" && ae.Location == null)
+                                return null;
+                            return "$" + ae.AxisName;
+                        }
+                    case VariableRefExpression ve:
+                        return "%" + ve.Name;
+                }
+#if DEBUG
+                Debugger.Break();
+#endif
+                throw new Exception($"Unknown expression type: {expr.GetType().Name}");
+            }
+
+            public string DebugTraceValue(ITypedElement? item)
+            {
+                if (item == null)
+                    return null; // possible with a null focus to kick things off
+
+                if (item.Location == "@primitivevalue@" || item.Location == "@QuantityAsPrimitiveValue@")
+                    return $"{item.Value}\t({item.InstanceType})";
+
+                return $"{item.Value}\t({item.InstanceType})\t{item.Location}";
+            }
         }
 
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
@@ -330,23 +438,25 @@ namespace FhirPathLab_DotNetEngine
 
             // inject the custom debug tracing
             List<DebugTraceNode> debugTraceList = new List<DebugTraceNode>();
+            var tracer = new TestDebugTracer();
+            tracer.TraceNode = (n, expr, contextId, focus, thisValue, index, totalValue, result) =>
+            {
+                var exprName = tracer.TraceExpressionNodeName(expr);
+                if (exprName == null)
+                    return; // this is a node that we aren't interested in tracing (Identifier and $that)
+                var pi = expr.Location as FhirPathExpressionLocationInfo;
 
-            symbolTable.Add("debugTrace", (IEnumerable<ITypedElement> values, string name, IEnumerable<ITypedElement> thisValues, IEnumerable<ITypedElement> index) => {
-                // Also grab the $this and $focus values.
                 var traceData = new DebugTraceNode()
                 {
-                    NodeLocation = name,
-                    This = thisValues.ToList(),
-                    Results = values.ToList()
+                    NodeLocation = $"{pi?.RawPosition},{pi?.Length},{exprName}",
+                    This = thisValue,
+                    Focus = focus,
+                    Index = index?.Value as int?,
+                    Results = result
                 };
-                var indexValue = index.FirstOrDefault();
-                if (indexValue != null && indexValue.InstanceType == "System.Integer")
-                {
-                    traceData.Index = (int)indexValue.Value;
-                }
                 debugTraceList.Add(traceData);
-                return values; 
-            });
+            };
+
 
             // Add variables from the operation parameters
             if (pcVariables?.Part != null)
@@ -444,14 +554,12 @@ namespace FhirPathLab_DotNetEngine
             try
             {
                 Expression parsedExpression = compiler.Parse(expression);
-                var visitor = new DebugTraceExpressionVisitor();
-                var taggedExpr = parsedExpression.Accept(visitor);
                 if (bValidateExpression)
                 {
                     ValidateFhirPathExpressions(resource?.TypeName ?? "Patient", context, parsedExpression, visitorContext, validator, configParameters, outcome, compiler);
                 }
                 if (bEnableDebugTrace)
-                    xps = compiler.Compile(taggedExpr);
+                    xps = compiler.Compile(parsedExpression, true);
                 else
                     xps = compiler.Compile(parsedExpression);
             }
@@ -529,6 +637,9 @@ namespace FhirPathLab_DotNetEngine
                 {
                     contextList.Add("", inputNav);
                 }
+
+                // inject the tracer
+                evalContext.DebugTracer = tracer;
 
                 // Execute expression
                 foreach (var ctExpr in contextList)
@@ -721,6 +832,43 @@ namespace FhirPathLab_DotNetEngine
                                     {
                                         if (val is FhirString str && str.Value == "")
                                             part.Name = "empty-string";
+                                        else
+                                            part.Value = dt;
+                                    }
+                                    else if (val is Resource fr)
+                                        part.Resource = fr;
+                                    else
+                                    {
+                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
+                                    }
+                                }
+
+                                // Also put in the FOCUS handling
+                                foreach (var rawItem in ti.Focus)
+                                {
+                                    if (rawItem == null) continue;
+                                    Base val = ToFhirValue(rawItem);
+                                    var part = new Parameters.ParameterComponent() { Name = "focus-" + val.TypeName };
+                                    traceParam.Part.Add(part);
+                                    // read the path from the rawItem using the IShortPathGenerator
+                                    if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                    {
+                                        if (spg?.ShortPath != null)
+                                        {
+                                            if (val is not PrimitiveType)
+                                            {
+                                                part.Name = "focus-resource-path";
+                                                part.Value = new FhirString(spg.ShortPath);
+                                                continue;
+                                            }
+                                            part.SetStringExtension("http://fhir.forms-lab.com/StructureDefinition/resource-path", spg.ShortPath);
+                                        }
+                                    }
+
+                                    if (val is DataType dt)
+                                    {
+                                        if (val is FhirString str && str.Value == "")
+                                            part.Name = "focus-empty-string";
                                         else
                                             part.Value = dt;
                                     }
