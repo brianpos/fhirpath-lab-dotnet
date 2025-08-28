@@ -234,6 +234,7 @@ namespace FhirPathLab_DotNetEngine
                 P.Date d => new Date(d.ToString()),
                 P.Time t => new Time(t.ToString()),
                 P.DateTime dt => new FhirDateTime(dt.ToDateTimeOffset(TimeSpan.Zero)),
+                P.Quantity q => new Quantity(q.Value, q.Unit, q.System == P.QuantityUnitSystem.UCUM ? P.Quantity.UCUM : "http://hl7.org/fhirpath/CodeSystem/calendar-units"),
                 var other => (Base)other
             };
         }
@@ -277,11 +278,11 @@ namespace FhirPathLab_DotNetEngine
             // op outcome just in case we get really bad issues
             OperationOutcome outcome = new OperationOutcome();
             outcome.SetAnnotation(HttpStatusCode.BadRequest);
-			if (parseIssues != null)
-			{
-				configParameters.Part.Insert(3, new Parameters.ParameterComponent() { Name = "debugOutcome", Resource = parseIssues });
-				outcome.Issue.AddRange(parseIssues.Issue);
-			}
+            if (parseIssues != null)
+            {
+                configParameters.Part.Insert(3, new Parameters.ParameterComponent() { Name = "debugOutcome", Resource = parseIssues });
+                outcome.Issue.AddRange(parseIssues.Issue);
+            }
             // outcome.SetAnnotation(new AnnotationSourceResource() { ValidatingResource = result });
 
             ScopedNode inputNav;
@@ -706,9 +707,13 @@ namespace FhirPathLab_DotNetEngine
                                     {
                                         if (spg?.ShortPath != null)
                                         {
-                                            part.Name = "resource-path";
-                                            part.Value = new FhirString(spg.ShortPath);
-                                            continue;
+                                            if (val is not PrimitiveType)
+                                            {
+                                                part.Name = "resource-path";
+                                                part.Value = new FhirString(spg.ShortPath);
+                                                continue;
+                                            }
+                                            part.SetStringExtension("http://fhir.forms-lab.com/StructureDefinition/resource-path", spg.ShortPath);
                                         }
                                     }
 
@@ -739,9 +744,13 @@ namespace FhirPathLab_DotNetEngine
                                     {
                                         if (spg?.ShortPath != null)
                                         {
-                                            part.Name = "this-resource-path";
-                                            part.Value = new FhirString(spg.ShortPath);
-                                            continue;
+                                            if (val is not PrimitiveType)
+                                            {
+                                                part.Name = "this-resource-path";
+                                                part.Value = new FhirString(spg.ShortPath);
+                                                continue;
+                                            }
+                                            part.SetStringExtension("http://fhir.forms-lab.com/StructureDefinition/resource-path", spg.ShortPath);
                                         }
                                     }
 
