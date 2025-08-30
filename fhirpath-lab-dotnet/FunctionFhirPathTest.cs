@@ -71,15 +71,21 @@ namespace FhirPathLab_DotNetEngine
                 return new BadRequestObjectResult("Missing URL");
 
             if (!downloadExampleUrl.StartsWith("https://hl7.org/fhir")
+                && !downloadExampleUrl.StartsWith("https://github.com/HL7/")
                 && !downloadExampleUrl.StartsWith("https://build.fhir.org/"))
                 return new BadRequestObjectResult("Unsupported URL");
 
-            if (!downloadExampleUrl.EndsWith(".json")
-                && !downloadExampleUrl.EndsWith(".json.html"))
-                return new BadRequestObjectResult("Unsupported URL");
+            //if (downloadExampleUrl != null && !downloadExampleUrl.EndsWith(".json")
+            //    && !downloadExampleUrl.EndsWith(".json.html"))
+            //    return new BadRequestObjectResult("Unsupported URL");
 
             if (downloadExampleUrl.EndsWith(".json.html"))
                 downloadExampleUrl = downloadExampleUrl.Replace(".json.html", ".json");
+			if (downloadExampleUrl.EndsWith(".xml.html"))
+				downloadExampleUrl = downloadExampleUrl.Replace(".xml.html", ".xml");
+			// for github specific references, need to go to the raw endpoint
+			if (downloadExampleUrl.StartsWith("https://github.com/HL7/"))
+				downloadExampleUrl = downloadExampleUrl.Replace("/blob/", "/refs/heads/").Replace("https://github.com", "https://raw.githubusercontent.com");
 
             HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("FhirPathLabDownloadAssistant", "0.1.0"));
