@@ -9,13 +9,17 @@ Issues will be managed through the fhirpath-lab project, and not this specific r
 
 ## New Features Added:
 
+### 28 April 2026
+* Update to the Firely SDK 5.13.2
+* Use the allow sites list from my diff project https://raw.githubusercontent.com/brianpos/hl7-diff/main/public/allowed-sites.json
+
 ### 29 August 2025
 * Handle XML or JSON embedded content (as alternative to parameters.part.resource - supports wrong model and also cross typing xml wrapped in json)
 
 ### 28 August 2025
 * Update to the Firely SDK 5.12.2
 * Update FhirPath Validator
-* Add support for debug tracer introdiced in Firely SDK 5.12.2
+* Add support for debug tracer introduced in Firely SDK 5.12.2
 
 ### 25 July 2025
 * Update to the Firely SDK 5.12.1
