@@ -943,6 +943,7 @@ namespace FhirPathLab_DotNetEngine
         {
             var typeResource = _inspector.GetTypeForFhirType(resourceType);
             validator.RegisterVariable("resource", typeResource);
+            validator.RegisterVariable("rootResource", typeResource);
 
             // Validate the context Expression (if it exists)
             if (!string.IsNullOrEmpty(context))
