@@ -9,6 +9,9 @@ Issues will be managed through the fhirpath-lab project, and not this specific r
 
 ## New Features Added:
 
+### 3 June 2026
+* Update to the Firely SDK 5.13.4
+
 ### 28 April 2026
 * Update to the Firely SDK 5.13.2
 * Use the allow sites list from my diff project https://raw.githubusercontent.com/brianpos/hl7-diff/main/public/allowed-sites.json
