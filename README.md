@@ -9,6 +9,12 @@ Issues will be managed through the fhirpath-lab project, and not this specific r
 
 ## New Features Added:
 
+### 16 June 2026
+* Update to the Firely SDK 6.2.0 (R6 release line)
+* Removed the FhirPath expression validator (expectedReturnType/parseDebug/parseDebugTree) as the
+  `brianpos.Fhir.Base.FhirPath.Validator` package does not yet have a 6.x compatible release
+* Migrated the evaluation engine to the new `PocoNode` FhirPath API
+
 ### 3 June 2026
 * Update to the Firely SDK 5.13.4
 
