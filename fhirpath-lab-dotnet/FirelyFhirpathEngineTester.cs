@@ -409,25 +409,25 @@ namespace FhirPathLab_DotNetEngine
 
             SymbolTable symbolTable = new SymbolTable(FhirPathCompiler.DefaultSymbolTable);
             var te = new FhirPathTerminologies(_inspector, terminologyServerUrl ?? "https://r4.ontoserver.csiro.au/fhir");
-            symbolTable.AddVar("terminologies", te);
-            symbolTable.Add("expand", (FhirPathTerminologies e, string can, string p) =>
-            {
-                var result = te.Expand(can, p);
-                if (result != null)
-                    return ElementNode.CreateList(result.ToTypedElement(_inspector));
-                return ElementNode.EmptyList;
-            });
-            symbolTable.Add("expand", (FhirPathTerminologies e, string can) =>
-            {
-                var result = te.Expand(can, "");
-                if (result != null)
-                    return ElementNode.CreateList(result.ToTypedElement(_inspector));
-                return ElementNode.EmptyList;
-            });
+            //symbolTable.AddVar("terminologies", te);
+            //symbolTable.Add("expand", (FhirPathTerminologies e, string can, string p) =>
+            //{
+            //    var result = te.Expand(can, p);
+            //    if (result != null)
+            //        return ElementNode.CreateList(result.ToTypedElement(_inspector));
+            //    return ElementNode.EmptyList;
+            //});
+            //symbolTable.Add("expand", (FhirPathTerminologies e, string can) =>
+            //{
+            //    var result = te.Expand(can, "");
+            //    if (result != null)
+            //        return ElementNode.CreateList(result.ToTypedElement(_inspector));
+            //    return ElementNode.EmptyList;
+            //});
 
-            symbolTable.Add("lookup", (ITypedElement a, ITypedElement b, ITypedElement c) => te.Lookup(a, b, c));
-            symbolTable.Add("lookup", (ITypedElement a, ITypedElement b) => te.Lookup(a, b));
-            symbolTable.Add("lookup", (ITypedElement a) => te.Lookup(a));
+            //symbolTable.Add("lookup", (ITypedElement a, ITypedElement b, ITypedElement c) => te.Lookup(a, b, c));
+            //symbolTable.Add("lookup", (ITypedElement a, ITypedElement b) => te.Lookup(a, b));
+            //symbolTable.Add("lookup", (ITypedElement a) => te.Lookup(a));
 
             // inject the custom debug tracing
             List<DebugTraceNode> debugTraceList = new List<DebugTraceNode>();
