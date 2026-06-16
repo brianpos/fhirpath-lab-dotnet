@@ -53,7 +53,7 @@ namespace Hl7.Fhir.WebApi
                 // doesn't support sync writing
                 if (typeof(Resource).IsAssignableFrom(context.ObjectType) && context.Object != null)
                 {
-                    var jps = new FhirJsonPocoSerializerSettings();
+                    var jps = new FhirJsonConverterOptions();
                     Resource r = context.Object as Resource;
                     if (r.HasAnnotation<SummaryType>() && !(r is OperationOutcome && string.IsNullOrEmpty(r.Id)))
                     {
@@ -76,7 +76,7 @@ namespace Hl7.Fhir.WebApi
                                 break;
                         }
                     }
-                    JsonSerializerOptions _serializerOptions = new JsonSerializerOptions().ForFhir(_mi, serializerSettings: jps);
+                    JsonSerializerOptions _serializerOptions = new JsonSerializerOptions().ForFhir(_mi, jps);
                     _serializerOptions.WriteIndented = true; // make it pretty
                     await System.Text.Json.JsonSerializer.SerializeAsync(context.HttpContext.Response.Body, context.Object, _serializerOptions, context.HttpContext.RequestAborted);
                 }

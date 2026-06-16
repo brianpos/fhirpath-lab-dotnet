@@ -44,7 +44,6 @@ namespace FhirPathLab_DotNetEngine
                 var settings = new FhirXmlPocoDeserializerSettings()
                 {
                     AnnotateResourceParseExceptions = true,
-                    ValidateOnFailedParse = true,
                     // Validator = null, // Since we can handle multiple issues, let this through
                 };
                 var ds = new BaseFhirXmlPocoDeserializer(inspector, settings);
@@ -79,7 +78,6 @@ namespace FhirPathLab_DotNetEngine
                 var settings = new FhirJsonPocoDeserializerSettings()
                 {
                     AnnotateResourceParseExceptions = true,
-                    ValidateOnFailedParse = true,
                     // Validator = null, // Since we can handle multiple issues, let this through
                 };
                 var ds = new BaseFhirJsonPocoDeserializer(inspector, settings);

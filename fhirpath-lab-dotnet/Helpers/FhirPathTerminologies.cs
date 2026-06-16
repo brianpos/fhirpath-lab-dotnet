@@ -1,3 +1,4 @@
+#pragma warning disable SDK0001 // ToTypedElement is for evaluation purposes only and is subject to change or removal in future updates.
 using Hl7.Fhir.ElementModel;
 using Hl7.Fhir.Specification;
 using System.Collections.Generic;
@@ -54,7 +55,7 @@ namespace FhirPathLab_DotNetEngine
             if (nvp.ContainsKey("date"))
                 expParams.Add("date", new FhirDateTime(nvp["date"]));
 
-            return fc.TypeOperation<ValueSet>("expand", expParams) as ValueSet;
+            return fc.TypeOperationAsync<ValueSet>("expand", expParams).GetAwaiter().GetResult() as ValueSet;
         }
 
         // lookup(coded, params) : Parameters
@@ -63,7 +64,7 @@ namespace FhirPathLab_DotNetEngine
             var fc = new BaseFhirClient(new Uri(TerminologyServerUrl), _inspector, new FhirClientSettings() { VerifyFhirVersion = false });
             Parameters reqParams = ExtractLookupParameters(parameters);
             reqParams.Add("code", new Code(code));
-            return fc.TypeOperation<CodeSystem>("lookup", reqParams) as Parameters;
+            return fc.TypeOperationAsync<CodeSystem>("lookup", reqParams).GetAwaiter().GetResult() as Parameters;
         }
 
         public Parameters Lookup(Coding coding, string parameters)
@@ -71,7 +72,7 @@ namespace FhirPathLab_DotNetEngine
             var fc = new BaseFhirClient(new Uri(TerminologyServerUrl), _inspector, new FhirClientSettings() { VerifyFhirVersion = false });
             Parameters reqParams = ExtractLookupParameters(parameters);
             reqParams.Add("coding", coding);
-            return fc.TypeOperation<CodeSystem>("lookup", reqParams) as Parameters;
+            return fc.TypeOperationAsync<CodeSystem>("lookup", reqParams).GetAwaiter().GetResult() as Parameters;
         }
 
         private static Parameters ExtractLookupParameters(string parameters)

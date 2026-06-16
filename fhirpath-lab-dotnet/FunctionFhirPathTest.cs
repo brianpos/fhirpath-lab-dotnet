@@ -55,7 +55,9 @@ namespace FhirPathLab_DotNetEngine
 
         private static ModelInspector _inspectorR6 = ModelInspector.ForAssembly(typeof(r6.Hl7.Fhir.Model.Patient).Assembly);
         List<string> _supportedResourcesR6 = r6.Hl7.Fhir.Model.ModelInfo.SupportedResources;
-        Type[] _openTypesR6 = r6.Hl7.Fhir.Model.ModelInfo.OpenTypes;
+        // R6 ModelInfo no longer exposes OpenTypes; the engine does not use this list
+        // (it was only consumed by the now-removed FhirPath validator), so an empty set is fine.
+        Type[] _openTypesR6 = Array.Empty<Type>();
 
         [Function("FHIRPathTester-CapabilityStatement")]
         public async Task<IActionResult> RunCapabilityStatement(
@@ -215,7 +217,7 @@ namespace FhirPathLab_DotNetEngine
             engine._xmlParser = new r4b.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
             engine._jsonParser = new r4b.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
 
-            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.13.4 (R4B)");
+            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-6.2.0 (R4B)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
@@ -235,7 +237,7 @@ namespace FhirPathLab_DotNetEngine
             engine._xmlParser = new r5.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
             engine._jsonParser = new r5.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
 
-            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.13.4 (R5)");
+            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-6.2.0 (R5)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);
@@ -255,7 +257,7 @@ namespace FhirPathLab_DotNetEngine
             engine._xmlParser = new r5.Hl7.Fhir.Serialization.FhirXmlParser().Parse<OperationOutcome>;
             engine._jsonParser = new r5.Hl7.Fhir.Serialization.FhirJsonParser().Parse<OperationOutcome>;
 
-            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-5.13.4 (R6)");
+            var resultResource = await engine.RunFhirPathTest(req, _logger, "Firely-6.2.0 (R6)");
             resultResource.ResourceBase = new Uri($"{req.Scheme}://{req.Host}/api");
 
             var result = new FhirObjectResult(HttpStatusCode.OK, resultResource);

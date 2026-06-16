@@ -37,12 +37,7 @@ namespace FhirPathLab_DotNetEngine
             _supportedResources = SupportedResources;
             _openTypes = OpenTypes;
 
-            var jsSettings = new SerializerSettings()
-            {
-                Pretty = true,
-                AppendNewLine = true,
-            };
-            _jsFormatter = new CommonFhirJsonSerializer(_inspector, jsSettings);
+            _jsFormatter = new BaseFhirJsonSerializer(_inspector);
         }
         protected readonly ModelInspector _inspector;
         protected readonly List<string> _supportedResources;
@@ -51,7 +46,7 @@ namespace FhirPathLab_DotNetEngine
         public Func<string, OperationOutcome> _xmlParser;
         public Func<string, OperationOutcome> _jsonParser;
 
-        CommonFhirJsonSerializer _jsFormatter;
+        BaseFhirJsonSerializer _jsFormatter;
 
         public static CapabilityStatement RunCapabilityStatement(HttpRequest req)
         {
@@ -102,7 +97,6 @@ namespace FhirPathLab_DotNetEngine
                     var settings = new FhirJsonPocoDeserializerSettings()
                     {
                         AnnotateResourceParseExceptions = true,
-                        ValidateOnFailedParse = true,
                         // Validator = null, // Since we can handle multiple issues, let this through
                     };
                     var ds = new BaseFhirJsonPocoDeserializer(_inspector, settings);
@@ -218,7 +212,7 @@ namespace FhirPathLab_DotNetEngine
             if (r is null)
                 return null;
 
-            var fhirValue = r.Annotation<IFhirValueProvider>();
+            var fhirValue = r.Annotation<IFhirValueProvider>() ?? r as IFhirValueProvider;
             if (fhirValue != null)
             {
                 return fhirValue.FhirValue;
@@ -268,12 +262,12 @@ namespace FhirPathLab_DotNetEngine
             public void TraceCall(
                 Expression expr,
                 int contextId,
-                IEnumerable<ITypedElement> focus,
-                IEnumerable<ITypedElement> thisValue,
-                ITypedElement index,
-                IEnumerable<ITypedElement> totalValue,
-                IEnumerable<ITypedElement> result,
-                IEnumerable<KeyValuePair<string, IEnumerable<ITypedElement>>> variables)
+                IEnumerable<PocoNode> focus,
+                IEnumerable<PocoNode> thisValue,
+                PocoNode index,
+                IEnumerable<PocoNode> totalValue,
+                IEnumerable<PocoNode> result,
+                IEnumerable<KeyValuePair<string, IEnumerable<PocoNode>>> variables)
             {
                 // DiagnosticsDebugTracer.DebugTraceCall(expr, contextId, focus, thisValue, index, totalValue, result, variables);
 
@@ -358,11 +352,10 @@ namespace FhirPathLab_DotNetEngine
         const string exturlJsonValue = "http://fhir.forms-lab.com/StructureDefinition/json-value";
         public Resource EvaluateFhirPathTesterExpression(string resourceId, Resource resource, string context, string expression, string terminologyServerUrl, Parameters.ParameterComponent pcVariables, string firelyVersion, bool bValidateExpression, bool bEnableDebugTrace, OperationOutcome parseIssues)
         {
-            var visitorContext = new JsonExpressionTreeVisitor(_inspector,
-                _supportedResources, _openTypes);
-
-            var validator = new JsonExpressionTreeVisitor(_inspector,
-                _supportedResources, _openTypes);
+            // NOTE: The FhirPath static validation (expectedReturnType/parseDebug/parseDebugTree)
+            // relied on the brianpos.Fhir.Base.FhirPath.Validator package, which does not yet have
+            // a Firely SDK R6 (6.x) compatible release. That functionality has been removed until a
+            // compatible version of the validator is available.
 
             Hl7.Fhir.FhirPath.ElementNavFhirExtensions.PrepareFhirSymbolTableFunctions();
             ExtensionMethods.PrepareLocalFhirSymbolTableFunctions();
@@ -393,13 +386,13 @@ namespace FhirPathLab_DotNetEngine
             }
             // outcome.SetAnnotation(new AnnotationSourceResource() { ValidatingResource = result });
 
-            ScopedNode inputNav;
+            PocoNode inputNav;
             FhirEvaluationContext evalContext;
             if (resource != null)
             {
                 // result.Parameter.Add(new Parameters.ParameterComponent() { Name = "input", Resource = resource });
-                inputNav = new ScopedNode(resource.ToTypedElement(_inspector));
-                evalContext = new FhirEvaluationContext().WithResourceOverrides(inputNav);
+                inputNav = resource.ToPocoNode(_inspector);
+                evalContext = new FhirEvaluationContext().WithResourceOverrides(inputNav, inputNav);
             }
             else
             {
@@ -481,25 +474,18 @@ namespace FhirPathLab_DotNetEngine
                             symbolTable.AddVar(varParam.Name, fv.ToTypedElement());
                         }
                         System.Diagnostics.Trace.WriteLine(fragmentContent);
-                        // TODO: Work out what type this is correctly - it's a fragment, how?
-                        validator.RegisterVariable(varParam.Name, typeof(FhirString));
                     }
                     else if (varParam.Value != null)
                     {
                         symbolTable.AddVar(varParam.Name, varParam.Value.ToTypedElement(_inspector));
-                        // Maybe this should be tweaking the type based on parsing the string value with the fhirpath engine
-                        validator.RegisterVariable(varParam.Name, varParam.Value.GetType());
                     }
                     else if (varParam.Resource != null)
                     {
                         symbolTable.AddVar(varParam.Name, varParam.Resource.ToTypedElement(_inspector));
-                        validator.RegisterVariable(varParam.Name, varParam.Resource.GetType());
                     }
                     else
                     {
                         symbolTable.AddVariable(varParam.Name, ElementNode.EmptyList);
-                        // No value, so just going to assume that it's a string randomly
-                        validator.RegisterVariable(varParam.Name, typeof(Element));
                     }
                 }
             }
@@ -511,7 +497,7 @@ namespace FhirPathLab_DotNetEngine
                 traceList.Add(new KeyValuePair<string, IEnumerable<ITypedElement>>(name, values.ToList()));
             };
 
-            Dictionary<string, ITypedElement> resolvedItems = new Dictionary<string, ITypedElement>();
+            Dictionary<string, PocoNode> resolvedItems = new Dictionary<string, PocoNode>();
             evalContext.ElementResolver = (referenceValue) =>
             {
                 if (resolvedItems.ContainsKey(referenceValue)) return resolvedItems[referenceValue];
@@ -523,7 +509,7 @@ namespace FhirPathLab_DotNetEngine
                         var t = wr.ResolveByUri(referenceValue);
                         if (t != null)
                         {
-                            var tv = new ScopedNode(t.ToTypedElement(_inspector));
+                            var tv = t.ToPocoNode(_inspector);
                             resolvedItems.Add(referenceValue, tv);
                             return tv;
                         }
@@ -540,7 +526,7 @@ namespace FhirPathLab_DotNetEngine
                     var cr = dr.Contained?.FirstOrDefault(r => "#" + r.Id == referenceValue);
                     if (cr != null)
                     {
-                        var tv = new ScopedNode(cr.ToTypedElement(_inspector));
+                        var tv = cr.ToPocoNode(_inspector);
                         resolvedItems.Add(referenceValue, tv);
                         return tv;
                     }
@@ -556,7 +542,9 @@ namespace FhirPathLab_DotNetEngine
                 Expression parsedExpression = compiler.Parse(expression);
                 if (bValidateExpression)
                 {
-                    ValidateFhirPathExpressions(resource?.TypeName ?? "Patient", context, parsedExpression, visitorContext, validator, configParameters, outcome, compiler);
+                    // FhirPath static validation is currently unavailable on the Firely SDK R6 (6.x)
+                    // line because the brianpos.Fhir.Base.FhirPath.Validator package has no compatible
+                    // release yet. The request is accepted but no validation details are produced.
                 }
                 if (bEnableDebugTrace)
                     xps = compiler.Compile(parsedExpression, true);
@@ -578,7 +566,7 @@ namespace FhirPathLab_DotNetEngine
             IEnumerable<ITypedElement> outputValues = null;
             if (xps != null)
             {
-                Dictionary<string, ITypedElement> contextList = new Dictionary<string, ITypedElement>();
+                Dictionary<string, PocoNode> contextList = new Dictionary<string, PocoNode>();
 
                 // before we execute the expression, if there is a property context to run from, navigate to that one fisrt
                 if (!string.IsNullOrEmpty(context))
@@ -588,9 +576,9 @@ namespace FhirPathLab_DotNetEngine
                     try
                     {
                         cexpr = compiler.Compile(context);
-                        foreach (var val in cexpr(inputNav, evalContext))
+                        foreach (var val in cexpr(new[] { inputNav }, evalContext))
                         {
-                            contextList.Add(val.Location, val);
+                            contextList.Add(((ITypedElement)val).Location, val);
                         }
                     }
                     catch (NullReferenceException ex)
@@ -647,9 +635,9 @@ namespace FhirPathLab_DotNetEngine
                     try
                     {
                         traceList.Clear();
-                        if (((ctExpr.Value as ScopedNode)?.Current as IFhirValueProvider)?.FhirValue != null)
+                        if ((ctExpr.Value as IFhirValueProvider)?.FhirValue != null)
                         {
-                            var res = xps(ctExpr.Value, evalContext);
+                            var res = xps(new[] { ctExpr.Value }, evalContext);
                             if (res.Any())
                                 outputValues = res.ToList();
                             else
@@ -730,7 +718,7 @@ namespace FhirPathLab_DotNetEngine
                                 var resultPart = new Parameters.ParameterComponent() { Name = item?.TypeName ?? "(null)" };
                                 partContext.Part.Add(resultPart);
                                 // read the path from the rawItem using the IShortPathGenerator
-                                if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                if (rawItem is IShortPathGenerator spg)
                                 {
                                     if (spg?.ShortPath != null)
                                         resultPart.SetStringExtension("http://fhir.forms-lab.com/StructureDefinition/resource-path", spg.ShortPath);
@@ -747,7 +735,7 @@ namespace FhirPathLab_DotNetEngine
                                     resultPart.Resource = fr;
                                 else if (item != null)
                                 {
-                                    resultPart.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(item));
+                                    resultPart.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(item, true));
                                 }
                                 else
                                 {
@@ -775,7 +763,7 @@ namespace FhirPathLab_DotNetEngine
                                     var part = new Parameters.ParameterComponent() { Name = val.TypeName };
                                     traceParam.Part.Add(part);
                                     // read the path from the rawItem using the IShortPathGenerator
-                                    if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                    if (rawItem is IShortPathGenerator spg)
                                     {
                                         if (spg?.ShortPath != null)
                                             part.SetStringExtension("http://fhir.forms-lab.com/StructureDefinition/resource-path", spg.ShortPath);
@@ -792,7 +780,7 @@ namespace FhirPathLab_DotNetEngine
                                         part.Resource = fr;
                                     else
                                     {
-                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
+                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val, true));
                                     }
                                 }
                             }
@@ -814,7 +802,7 @@ namespace FhirPathLab_DotNetEngine
                                     var part = new Parameters.ParameterComponent() { Name = val.TypeName };
                                     traceParam.Part.Add(part);
                                     // read the path from the rawItem using the IShortPathGenerator
-                                    if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                    if (rawItem is IShortPathGenerator spg)
                                     {
                                         if (spg?.ShortPath != null)
                                         {
@@ -839,7 +827,7 @@ namespace FhirPathLab_DotNetEngine
                                         part.Resource = fr;
                                     else
                                     {
-                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
+                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val, true));
                                     }
                                 }
 
@@ -851,7 +839,7 @@ namespace FhirPathLab_DotNetEngine
                                     var part = new Parameters.ParameterComponent() { Name = "focus-" + val.TypeName };
                                     traceParam.Part.Add(part);
                                     // read the path from the rawItem using the IShortPathGenerator
-                                    if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                    if (rawItem is IShortPathGenerator spg)
                                     {
                                         if (spg?.ShortPath != null)
                                         {
@@ -876,7 +864,7 @@ namespace FhirPathLab_DotNetEngine
                                         part.Resource = fr;
                                     else
                                     {
-                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
+                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val, true));
                                     }
                                 }
 
@@ -888,7 +876,7 @@ namespace FhirPathLab_DotNetEngine
                                     var part = new Parameters.ParameterComponent() { Name = "this-"+val.TypeName };
                                     traceParam.Part.Add(part);
                                     // read the path from the rawItem using the IShortPathGenerator
-                                    if ((rawItem as ScopedNode)?.Current is IShortPathGenerator spg)
+                                    if (rawItem is IShortPathGenerator spg)
                                     {
                                         if (spg?.ShortPath != null)
                                         {
@@ -913,7 +901,7 @@ namespace FhirPathLab_DotNetEngine
                                         part.Resource = fr;
                                     else
                                     {
-                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val));
+                                        part.SetStringExtension(exturlJsonValue, _jsFormatter.SerializeToString(val, true));
                                     }
                                 }
 
@@ -937,59 +925,6 @@ namespace FhirPathLab_DotNetEngine
             }
 
             return result;
-        }
-
-        private void ValidateFhirPathExpressions(string resourceType, string context, Expression expression, JsonExpressionTreeVisitor visitorContext, JsonExpressionTreeVisitor validator, Parameters.ParameterComponent configParameters, OperationOutcome outcome, FhirPathCompiler compiler)
-        {
-            var typeResource = _inspector.GetTypeForFhirType(resourceType);
-            validator.RegisterVariable("resource", typeResource);
-            validator.RegisterVariable("rootResource", typeResource);
-
-            // Validate the context Expression (if it exists)
-            if (!string.IsNullOrEmpty(context))
-            {
-                var contextExpr = compiler.Parse(context);
-                visitorContext.AddInputType(typeResource);
-                var rvc = contextExpr.Accept(visitorContext);
-                foreach (var t in rvc.Types)
-                {
-                    // TODO: Update when the signature also supports adding the CM directly
-                    validator.AddInputType(t.ClassMapping.NativeType);
-                    validator.RegisterVariable("context", t.ClassMapping.NativeType);
-                }
-                // TODO: Support multiple types going into the context?
-            }
-            else
-            {
-                validator.AddInputType(_inspector.GetTypeForFhirType(resourceType));
-                validator.RegisterVariable("context", typeResource);
-            }
-
-            // Validate the Expression itself
-            var rv = expression.Accept(validator);
-            if (validator.Outcome.Issue.Any())
-                outcome.Issue.AddRange(validator.Outcome.Issue);
-            configParameters.Part.Insert(1, new Parameters.ParameterComponent() { Name = "expectedReturnType", Value = new FhirString(rv.ToString()) });
-            configParameters.Part.Insert(2, new Parameters.ParameterComponent() { Name = "parseDebug", Value = new FhirString(validator.ToString()) });
-
-            JsonSerializerSettings JsonSettings = new JsonSerializerSettings
-            {
-                Formatting = Formatting.Indented,
-                NullValueHandling = NullValueHandling.Ignore,
-                DefaultValueHandling = DefaultValueHandling.Ignore,
-                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-                ContractResolver = ShouldSerializeContractResolver.Instance,
-            };
-            configParameters.Part.Insert(2, new Parameters.ParameterComponent()
-            {
-                Name = "parseDebugTree",
-                Value = new FhirString(Newtonsoft.Json.JsonConvert.SerializeObject(validator.ToJson(), JsonSettings))
-            });
-
-            if (validator.Outcome.Issue.Any())
-            {
-                configParameters.Part.Insert(3, new Parameters.ParameterComponent() { Name = "debugOutcome", Resource = validator.Outcome });
-            }
         }
     }
 

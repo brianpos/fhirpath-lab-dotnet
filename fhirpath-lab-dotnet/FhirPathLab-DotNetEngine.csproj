@@ -14,17 +14,22 @@
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.50.0" />
 
-    <PackageReference Include="Hl7.Fhir.Base" Version="5.13.4" />
-    <PackageReference Include="Hl7.Fhir.R4B" Version="5.13.4">
+    <PackageReference Include="Hl7.Fhir.Base" Version="6.2.0" />
+    <PackageReference Include="Hl7.Fhir.R4B" Version="6.2.0">
       <Aliases>r4b</Aliases>
     </PackageReference>
-    <PackageReference Include="Hl7.Fhir.R5" Version="5.13.4">
+    <PackageReference Include="Hl7.Fhir.R5" Version="6.2.0">
       <Aliases>r5</Aliases>
     </PackageReference>
-		<PackageReference Include="Hl7.Fhir.R6" Version="5.13.4">
+		<PackageReference Include="Hl7.Fhir.R6" Version="6.2.0">
 			<Aliases>r6</Aliases>
 		</PackageReference>
+		<!--
+		The brianpos.Fhir.Base.FhirPath.Validator package does not yet have a release
+		compatible with the Firely SDK R6 (6.x) line, so the FhirPath static validation
+		functionality has been removed/disabled until a compatible version is available.
 		<PackageReference Include="brianpos.Fhir.Base.FhirPath.Validator" Version="5.13.4-rc1" />
+		-->
   </ItemGroup>
 
   <ItemGroup>
